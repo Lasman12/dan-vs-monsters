@@ -66,6 +66,8 @@ const HP_STEP = 20;
 const HP_PRICES = [40, 70, 110, 160, 220, 290, 370, 460, 560, 680];
 const ATK_SPEED = [{ cd: 22, p: 0 }, { cd: 18, p: 90 }, { cd: 15, p: 200 }, { cd: 12, p: 380 }, { cd: 10, p: 600 }];
 const MAGNET = [{ r: 26, p: 0 }, { r: 50, p: 70 }, { r: 80, p: 160 }, { r: 120, p: 300 }];
+const COIN_MAX = 25, COIN_STEP = 2;   // +2% coins per level, up to +50%
+const coinPrice = lv => 30 + lv * 12;
 const DBL_PRICE = 150, DASH_PRICE = 220, POTION_PRICE = 30, MAX_POTIONS = 5;
 const TIPS = {
   start: 'חצים / WASD לזוז · רווח לקפוץ · J להרביץ · Q לשתות שיקוי',
@@ -83,7 +85,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
 };
 function newSave() {
-  return { coins: 0, unlocked: 1, medals: Array(10).fill(0), best: Array(10).fill(0), armor: 0, weapon: 0, hpLv: 0, dbl: false, dash: false, potions: 1, tips: {}, kills: 0, bosses: 0, atkLv: 0, magLv: 0 };
+  return { coins: 0, unlocked: 1, medals: Array(10).fill(0), best: Array(10).fill(0), armor: 0, weapon: 0, hpLv: 0, dbl: false, dash: false, potions: 1, tips: {}, kills: 0, bosses: 0, atkLv: 0, magLv: 0, coinLv: 0 };
 }
 let account = null;   // username
 let save = newSave();
@@ -408,7 +410,7 @@ function setupTouch() {
   setupJoystick();
 }
 // floating joystick: appears under the thumb anywhere in the left part of the screen
-let joyId = null;
+let joyId = null, joyRelease = null;
 function setupJoystick() {
   const zone = $('jzone'), base = $('jbase'), knob = $('jknob');
   let cx = 0, cy = 0;
@@ -425,6 +427,7 @@ function setupJoystick() {
     setKey('T_down', ny > 0.55 && Math.abs(nx) < 0.75);
   };
   const find = list => [...list].find(t => t.identifier === joyId);
+  joyRelease = release;
   zone.addEventListener('touchstart', e => {
     e.preventDefault(); e.stopPropagation(); initAudio();
     if (joyId !== null) return;
@@ -1206,8 +1209,8 @@ function updatePickups() {
     if (!P.dead && Math.hypot(dx, dy) < MAGNET[save.magLv].r && k.type !== 'potion') { k.x += dx * 0.18; k.y += dy * 0.18; }
     if (!P.dead && overlap(P, k)) {
       k.dead = true;
-      if (k.type === 'coin') { save.coins += 1; L.coinsGot += 1; sfx('coin'); }
-      else if (k.type === 'gem') { save.coins += 15; L.coinsGot += 15; sfx('gem'); floatText(k.x, k.y - 4, '+15', '#ff8ab8'); burst(k.x, k.y, 10, ['#ff4a8a', '#fff'], 2); }
+      if (k.type === 'coin') { gainCoins(1); sfx('coin'); }
+      else if (k.type === 'gem') { gainCoins(15); sfx('gem'); floatText(k.x, k.y - 4, '+15', '#ff8ab8'); burst(k.x, k.y, 10, ['#ff4a8a', '#fff'], 2); }
       else if (k.type === 'potion') {
         if (save.potions < MAX_POTIONS) { save.potions++; toast('מצאת שיקוי! (Q לשתות)'); } else { P.hp = Math.min(maxHP(), P.hp + 30); floatText(P.x, P.y - 6, '+30', '#5cff7a'); }
         sfx('potion');
@@ -1215,6 +1218,13 @@ function updatePickups() {
     }
   }
   L.pickups = L.pickups.filter(k => !k.dead);
+}
+// coin bonus upgrade; fractions carry over so +2% really adds up
+let coinFrac = 0;
+function gainCoins(v) {
+  const extra = v * save.coinLv * COIN_STEP / 100 + coinFrac, whole = Math.floor(extra);
+  coinFrac = extra - whole;
+  save.coins += v + whole; L.coinsGot += v + whole;
 }
 function dust(x, y) { return { x, y, vx: (Math.random() - 0.5) * 1.2, vy: -Math.random() * 0.8, life: 18, max: 18, col: 'rgba(255,255,255,0.7)', s: 2, g: -0.01 }; }
 function burst(x, y, n, cols, spd) {
@@ -1442,7 +1452,7 @@ let state = 'login';
 const scr = $('screen');
 function show(html, cls = '') { scr.className = 'overlay on ' + cls; scr.innerHTML = html; }
 function hideScreen() { scr.className = 'overlay'; scr.innerHTML = ''; }
-function setGameUI(on) { document.body.classList.toggle('playing', on); }
+function setGameUI(on) { document.body.classList.toggle('playing', on); document.body.classList.remove('paused'); if (!on) releaseTouch(); }
 
 function medalSVG(tier, sym, size = 64, locked = false) {
   const ring = locked ? '#3a3448' : ['#3a3448', '#cd7f32', '#c8d0da', '#ffcc33'][tier];
@@ -1646,6 +1656,7 @@ function shopScreen(back, nextLevel) {
             <div><span>🛡️ הגנה</span><b>${Math.round(A.red * 100)}%</b></div>
             <div><span>⚡ מכות לשנייה</span><b>${perSec(atk.cd)}</b></div>
             <div><span>🧲 מגנט</span><b>${mag.r}</b></div>
+            <div><span>💰 בונוס מטבעות</span><b dir="ltr">+${save.coinLv * COIN_STEP}%</b></div>
             <div><span>🧪 שיקויים</span><b>${save.potions}/${MAX_POTIONS}</b></div>
           </div>
           <small class="gear">${W.n} · ${A.n}${save.dbl ? ' · קפיצה כפולה' : ''}${save.dash ? ' · דאש' : ''}</small>
@@ -1656,6 +1667,7 @@ function shopScreen(back, nextLevel) {
           ${track('weapon', '⚔️', nW ? nW.n : W.n, save.weapon, WEAPONS.length - 1, `${W.n} · נזק ${W.dmg}`, nW ? `נזק ${nW.dmg}` : null, nW ? nW.p : null, nW ? nW.col : W.col)}
           ${track('armor', '🛡️', nA ? nA.n : A.n, save.armor, ARMORS.length - 1, `חוסם ${Math.round(A.red * 100)}%`, nA ? `${Math.round(nA.red * 100)}%` : null, nA ? nA.p : null, nA ? nA.body : A.body)}
           ${track('atk', '⚡', 'מהירות מכה', save.atkLv, ATK_SPEED.length - 1, `${perSec(atk.cd)} לשנייה`, nAtk ? perSec(nAtk.cd) : null, nAtk ? nAtk.p : null, '#ffcc33')}
+          ${track('coin', '💰', 'בונוס מטבעות', save.coinLv, COIN_MAX, `<bdi dir="ltr">+${save.coinLv * COIN_STEP}%</bdi> מטבעות`, save.coinLv < COIN_MAX ? `<bdi dir="ltr">+${(save.coinLv + 1) * COIN_STEP}%</bdi>` : null, save.coinLv < COIN_MAX ? coinPrice(save.coinLv) : null, '#ffcc33')}
           ${track('mag', '🧲', 'מגנט מטבעות', save.magLv, MAGNET.length - 1, `טווח ${mag.r}`, nMag ? nMag.r : null, nMag ? nMag.p : null, '#7fb8ff')}
           <h4>יכולות</h4>
           ${track('dbl', '🪽', 'קפיצה כפולה', save.dbl ? 1 : 0, 1, save.dbl ? 'יש לך!' : 'קפוץ שוב באוויר', null, save.dbl ? null : DBL_PRICE, '#bfe8ff')}
@@ -1681,14 +1693,21 @@ function buy(id) {
   if (id === 'weapon' && WEAPONS[save.weapon + 1] && pay(WEAPONS[save.weapon + 1].p)) save.weapon++;
   if (id === 'hp' && save.hpLv < HP_PRICES.length && pay(HP_PRICES[save.hpLv])) save.hpLv++;
   if (id === 'atk' && ATK_SPEED[save.atkLv + 1] && pay(ATK_SPEED[save.atkLv + 1].p)) save.atkLv++;
+  if (id === 'coin' && save.coinLv < COIN_MAX && pay(coinPrice(save.coinLv))) save.coinLv++;
   if (id === 'mag' && MAGNET[save.magLv + 1] && pay(MAGNET[save.magLv + 1].p)) save.magLv++;
   if (id === 'dbl' && !save.dbl && pay(DBL_PRICE)) save.dbl = true;
   if (id === 'dash' && !save.dash && pay(DASH_PRICE)) save.dash = true;
   if (id === 'potion' && save.potions < MAX_POTIONS && pay(POTION_PRICE)) save.potions++;
   persist();
 }
+function releaseTouch() {
+  for (const k in keys) if (k.startsWith('T_')) keys[k] = false;
+  document.querySelectorAll('.tbtn.down').forEach(b => b.classList.remove('down'));
+  if (joyRelease) joyRelease();
+}
 function pauseScreen() {
   state = 'pause';
+  document.body.classList.add('paused'); releaseTouch();
   show(`
     <div class="panel narrow">
       <h2>עצירה</h2>

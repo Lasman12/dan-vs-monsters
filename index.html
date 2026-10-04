@@ -149,7 +149,7 @@
   /* touch controls */
   #touch { position: fixed; inset: 0; display: none; z-index: 20; direction: ltr; pointer-events: none; }
   #touch.on { display: block; }
-  body:not(.playing) #touch { display: none; }
+  body:not(.playing) #touch, body.paused #touch { display: none; }
   .tbtn { position: fixed; pointer-events: auto; border-radius: 50%; background: #0000002e; border: 3px solid #ffffff59; color: #ffffffd0; font: 900 22px 'Rubik'; display: grid; place-items: center; touch-action: none; -webkit-user-select: none; user-select: none; text-shadow: 0 2px 0 #0008; }
   .tbtn.down { background: #ffcc3355; border-color: #ffcc33; transform: scale(.94); }
   /* sizes are relative to the short side so they fit every phone */

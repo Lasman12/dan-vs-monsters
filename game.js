@@ -388,11 +388,41 @@ function setupTouch() {
     if (e.target.closest && e.target.closest('#fsBtn')) return;
     e.preventDefault(); initAudio();
     const now = new Set();
-    for (const t of e.touches) { const el = document.elementFromPoint(t.clientX, t.clientY); const bt = el && el.closest('[data-k]'); if (bt) now.add(bt.dataset.k); }
+    for (const t of e.touches) { if (t.identifier === joyId) continue; const el = document.elementFromPoint(t.clientX, t.clientY); const bt = el && el.closest('[data-k]'); if (bt) now.add(bt.dataset.k); }
     for (const bt of btns) { const k = bt.dataset.k, on = now.has(k); if (on !== !!keys[k]) setKey(k, on); bt.classList.toggle('down', on); }
   };
   for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) tc.addEventListener(ev, sync, { passive: false });
   $('fsBtn').addEventListener('click', () => goFullscreen(true));
+  setupJoystick();
+}
+// floating joystick: appears under the thumb anywhere in the left part of the screen
+let joyId = null;
+function setupJoystick() {
+  const zone = $('jzone'), base = $('jbase'), knob = $('jknob');
+  let cx = 0, cy = 0;
+  const radius = () => base.offsetWidth / 2;
+  const release = () => {
+    joyId = null; setKey('T_left', false); setKey('T_right', false); setKey('T_down', false);
+    base.classList.remove('active'); base.style.left = base.style.top = ''; knob.style.transform = '';
+  };
+  const move = (dx, dy) => {
+    const r = radius(), d = Math.hypot(dx, dy), k = d > r ? r / d : 1;
+    knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+    const nx = dx / r, ny = dy / r;
+    setKey('T_left', nx < -0.28); setKey('T_right', nx > 0.28);
+    setKey('T_down', ny > 0.55 && Math.abs(nx) < 0.75);
+  };
+  const find = list => [...list].find(t => t.identifier === joyId);
+  zone.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation(); initAudio();
+    if (joyId !== null) return;
+    const t = e.changedTouches[0], zr = zone.getBoundingClientRect(), r = radius();
+    joyId = t.identifier; cx = t.clientX; cy = t.clientY;
+    base.style.left = (cx - zr.left - r) + 'px'; base.style.top = (cy - zr.top - r) + 'px';
+    base.classList.add('active'); move(0, 0);
+  }, { passive: false });
+  zone.addEventListener('touchmove', e => { e.preventDefault(); e.stopPropagation(); const t = find(e.changedTouches); if (t) move(t.clientX - cx, t.clientY - cy); }, { passive: false });
+  for (const ev of ['touchend', 'touchcancel']) zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); if (find(e.changedTouches)) release(); }, { passive: false });
 }
 function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches; }
 function goFullscreen(force) {
@@ -1526,6 +1556,7 @@ function helpScreen() {
         <div><kbd>Q</kbd> שתיית שיקוי (+50 חיים)</div>
         <div><kbd>↓</kbd> + <kbd>רווח</kbd> ירידה דרך פלטפורמה דקה</div>
         <div><kbd>Esc</kbd> עצירה · <kbd>M</kbd> סאונד</div>
+        <div>📱 בטלפון: ג'ויסטיק בצד שמאל לזוז (למשוך למטה = ירידה מפלטפורמה / מכה למטה), כפתורים בצד ימין</div>
       </div>
       <ul class="tips">
         <li>קפוץ כשאתה צמוד לקיר כדי לטפס עליו (פארקור!).</li>

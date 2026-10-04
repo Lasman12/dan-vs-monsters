@@ -153,9 +153,14 @@
   .tbtn { position: fixed; pointer-events: auto; border-radius: 50%; background: #0000002e; border: 3px solid #ffffff59; color: #ffffffd0; font: 900 22px 'Rubik'; display: grid; place-items: center; touch-action: none; -webkit-user-select: none; user-select: none; text-shadow: 0 2px 0 #0008; }
   .tbtn.down { background: #ffcc3355; border-color: #ffcc33; transform: scale(.94); }
   /* sizes are relative to the short side so they fit every phone */
-  .tl, .tr { width: 17vmin; height: 17vmin; bottom: 5vmin; }
-  .tl { left: max(4vmin, env(safe-area-inset-left)); } .tr { left: calc(max(4vmin, env(safe-area-inset-left)) + 19vmin); }
-  .td { width: 13vmin; height: 13vmin; bottom: 24vmin; left: calc(max(4vmin, env(safe-area-inset-left)) + 11vmin); font-size: 18px; }
+  #jzone { position: fixed; left: 0; bottom: 0; width: 46vw; height: 72vh; pointer-events: auto; touch-action: none; }
+  #jbase { position: absolute; left: max(5vmin, env(safe-area-inset-left)); bottom: 5vmin; width: 32vmin; height: 32vmin; border-radius: 50%;
+    background: radial-gradient(circle, #ffffff10 0 40%, #0000002e 41%); border: 3px solid #ffffff59; opacity: .75; transition: opacity .15s; }
+  #jbase.active { opacity: 1; bottom: auto; transition: none; }
+  #jbase::before, #jbase::after { content: '◀'; position: absolute; top: 50%; left: 7%; transform: translateY(-50%); color: #ffffff80; font-size: 4vmin; }
+  #jbase::after { content: '▶'; left: auto; right: 7%; }
+  #jknob { position: absolute; left: 50%; top: 50%; width: 14vmin; height: 14vmin; margin: -7vmin 0 0 -7vmin; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #ffffffb0, #ffffff55); border: 3px solid #ffffffcc; box-shadow: 0 3px 0 #0005; }
   .tj { width: 21vmin; height: 21vmin; right: max(4vmin, env(safe-area-inset-right)); bottom: 5vmin; font-size: 30px; }
   .ta { width: 17vmin; height: 17vmin; right: calc(max(4vmin, env(safe-area-inset-right)) + 23vmin); bottom: 4vmin; font-size: 26px; }
   .tdash { width: 13vmin; height: 13vmin; right: calc(max(4vmin, env(safe-area-inset-right)) + 4vmin); bottom: 28vmin; font-size: 15px; }
@@ -213,9 +218,7 @@
   <div id="screen" class="overlay"></div>
 </div>
 <div id="touch">
-  <div class="tbtn tl" data-k="T_left">◀</div>
-  <div class="tbtn tr" data-k="T_right">▶</div>
-  <div class="tbtn td" data-k="T_down">▼</div>
+  <div id="jzone"><div id="jbase"><div id="jknob"></div></div></div>
   <div class="tbtn tj" data-k="T_jump">⤒</div>
   <div class="tbtn ta" data-k="T_attack">⚔</div>
   <div class="tbtn tdash" data-k="T_dash">דאש</div>

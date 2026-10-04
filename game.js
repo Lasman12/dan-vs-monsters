@@ -54,13 +54,17 @@ const ARMORS = [
   { n: 'שריון יהלום',     red: 0.62, p: 1300, body: '#6ff0ff', bodyD: '#2aa8c8', helm: '#8ff6ff' },
 ];
 const WEAPONS = [
-  { n: 'אגרופים',    dmg: 10, p: 0,   range: 16, col: '#ffffff' },
-  { n: 'אלת עץ',     dmg: 16, p: 100, range: 19, col: '#c08a4a' },
-  { n: 'חרב ברזל',    dmg: 24, p: 260, range: 22, col: '#dfe8f2' },
-  { n: 'חרב ענק',     dmg: 34, p: 520, range: 26, col: '#7fe3ff' },
-  { n: 'חרב אגדית',   dmg: 48, p: 950, range: 30, col: '#ffd54a' },
+  { n: 'חרב עץ',      dmg: 7,  p: 0,    range: 18, col: '#c08a4a', guard: '#7a5228' },
+  { n: 'חרב אבן',     dmg: 12, p: 80,   range: 19, col: '#a4a4b0', guard: '#5a5a66' },
+  { n: 'חרב ברזל',    dmg: 18, p: 200,  range: 21, col: '#dfe8f2', guard: '#8a6a3a' },
+  { n: 'חרב פלדה',    dmg: 26, p: 420,  range: 24, col: '#b8d4f0', guard: '#ffcc33' },
+  { n: 'חרב קריסטל',  dmg: 36, p: 750,  range: 27, col: '#7fe3ff', guard: '#b07aff' },
+  { n: 'חרב אגדית',   dmg: 50, p: 1200, range: 30, col: '#ffd54a', guard: '#ff3050' },
 ];
-const HP_PRICES = [60, 120, 200, 300, 420];
+const HP_STEP = 20;
+const HP_PRICES = [40, 70, 110, 160, 220, 290, 370, 460, 560, 680];
+const ATK_SPEED = [{ cd: 22, p: 0 }, { cd: 18, p: 90 }, { cd: 15, p: 200 }, { cd: 12, p: 380 }, { cd: 10, p: 600 }];
+const MAGNET = [{ r: 26, p: 0 }, { r: 50, p: 70 }, { r: 80, p: 160 }, { r: 120, p: 300 }];
 const DBL_PRICE = 150, DASH_PRICE = 220, POTION_PRICE = 30, MAX_POTIONS = 5;
 const TIPS = {
   start: 'חצים / WASD לזוז · רווח לקפוץ · J להרביץ · Q לשתות שיקוי',
@@ -78,7 +82,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
 };
 function newSave() {
-  return { coins: 0, unlocked: 1, medals: Array(10).fill(0), best: Array(10).fill(0), armor: 0, weapon: 0, hpLv: 0, dbl: false, dash: false, potions: 1, tips: {}, kills: 0, bosses: 0 };
+  return { coins: 0, unlocked: 1, medals: Array(10).fill(0), best: Array(10).fill(0), armor: 0, weapon: 0, hpLv: 0, dbl: false, dash: false, potions: 1, tips: {}, kills: 0, bosses: 0, atkLv: 0, magLv: 0 };
 }
 let account = null;   // username
 let save = newSave();
@@ -207,10 +211,22 @@ function buildDan() {
 
 const ESPR = {};
 function buildEnemySprites() {
-  ESPR.slime = [
-    sprite(['....gggg....', '..gggggggg..', '.gggggggggg.', '.ggWKggWKgg.', 'gggggggggggg', 'gGgggggggggg', 'gggggggggGgg', '.gggggggggg.'], { g: '#5ccf4a', G: '#8ef07a', W: '#fff', K: '#1a1020' }),
-    sprite(['............', '....gggg....', '.gggggggggg.', 'gggWKggWKggg', 'gggggggggggg', 'gGgggggggggg', 'gggggggggGgg', 'gggggggggggg'], { g: '#5ccf4a', G: '#8ef07a', W: '#fff', K: '#1a1020' }),
-  ];
+  makeSlime('#5ccf4a');
+  ESPR.mush = [sprite(['...rrrr...', '.rrWrrWrr.', 'rrrrrrrrrr', 'rWrrrrrWrr', '.rrrrrrrr.', '...cccc...', '..cKccKc..', '..cccccc..', '..cccccc..', '...cccc...'], { r: '#d04040', W: '#fff', c: '#f0e0c0', K: '#1a1020' }),
+               sprite(['..........', '...rrrr...', '.rrWrrWrr.', 'rrrrrrrrrr', 'rWrrrrrWrr', '..cccccc..', '..cKccKc..', '..cccccc..', '..cccccc..', '...cccc...'], { r: '#d04040', W: '#fff', c: '#f0e0c0', K: '#1a1020' })];
+  const hp = { p: '#7a5a3a', P: '#b08a5a', s: '#e8c8a0', K: '#1a1020', f: '#5a3a2a' };
+  ESPR.hedge = [sprite(['....pPpP....', '..pPpPpPpp..', '.pPpPpPpppp.', 'pPpPpPpppsss', 'pppppppps.Ks', 'pPpPpPppssss', '.ppppppppss.', '..ff...ff...'], hp),
+                sprite(['...pPpP...', '.pPpPpPpp.', '.pppPpPpp.', 'pPpPpPpPpp', 'pppPpPpppp', 'pPpppPpPpp', 'ppPpPpppPp', '.pppPpPpp.', '.pPpppPpp.', '...pPpP...'], hp)];
+  ESPR.ghost = [sprite(['....wwww....', '..wwwwwwww..', '.wwwwwwwwww.', '.wwKKwwKKww.', 'wwwKKwwKKwww', 'wwwwwwwwwwww', 'wwwwwKKwwwww', 'wwwwKKKKwwww', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'ww.www.www.w', 'w...w...w...'], { w: '#e8f0ff', K: '#2a2050' }),
+                sprite(['....wwww....', '..wwwwwwww..', '.wwwwwwwwww.', '.wwwwwwwwww.', 'wwKKwwwwKKww', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'wwwwwKKwwwww', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'wwwwwwwwwwww', 'ww.www.www.w', 'w...w...w...'], { w: '#e8f0ff', K: '#2a2050' })];
+  const fr = { g: '#4ab04a', G: '#2e7a2e', e: '#fff', K: '#1a1020', R: '#c03040', y: '#e8f080' };
+  ESPR.frog = [sprite(['..ee....ee..', '.eKegggGeKe.', '.gggggggggg.', 'gggggggggggg', 'gRRRRRRRRRgg', 'gyyyyyyyyygg', '.gg.gGGg.gg.', 'gg...gg...gg'], fr),
+               sprite(['..ee....ee..', '.eKegggGeKe.', '.gggggggggg.', 'gggggggggggg', 'gRRRRRRRRRgg', '.yyyyyyyyyg.', '..gg....gg..', '.gg......gg.'], fr)];
+  const wp = { w: '#cfe8ff', y: '#ffcc33', K: '#1a1020' };
+  ESPR.wasp = [sprite(['..ww....ww..', '...ww..ww...', '..yyyKyyyK..', '.yKyyKyyKyy.', 'yyKyyKyyKyyK', '.yKyyKyyKyy.', '..yyyKyyy...', '.........KK.'], wp),
+               sprite(['............', '............', '..yyyKyyyK..', '.yKyyKyyKyy.', 'yyKyyKyyKyyK', '.yKyyKyyKyy.', '..wwyKyyww..', '.ww......ww.'], wp)];
+  const rk = { r: '#8a7a6a', R: '#6a5a4a', E: '#ff8a3a', m: '#4a7a3a' };
+  ESPR.rocky = [sprite(['....rmmrrr....', '..rrrrrrrrrr..', '.rrRrrrrrrRrr.', '.rrrEErrEErrr.', 'rrrrrrrrrrrrrr', 'rrrRrrrrrrrRrr', 'rrrrrrrrrrrrrr', '.rrrrrrrrrrrr.', 'rr.rrrRrrrr.rr', 'rr.rrrrrrrr.rr', 'rr.rrrrrrRr.rr', '...rrr..rrr...', '...rrr..rrr...', '..rrrr..rrrr..'], rk)];
   const batPal = { p: '#5a3a7a', P: '#3a2052', R: '#ff4040' };
   ESPR.bat = [
     sprite(['P............P', 'PP..........PP', 'PPP..pppp..PPP', '.PPPpRppRpPPP.', '..PPpppppPPP..', '....pppppp....', '.....p..p.....'], batPal),
@@ -247,6 +263,15 @@ function buildEnemySprites() {
     sprite(['p.......', 'prr.....', 'prrrr...', 'prrrrrr.', 'prrrr...', 'prr.....', 'p.......', 'p.......', 'p.......', 'p.......', 'p.......', 'p.......', 'p.......', 'p.......', 'gggg....'], { p: '#d8d8e0', r: '#3fd04a', g: '#6a6a7a' }),
   ];
 }
+
+function makeSlime(col) {
+  const pal = { g: col, G: shade(col, 50), W: '#fff', K: '#1a1020' };
+  ESPR.slime = [
+    sprite(['....gggg....', '..gggggggg..', '.gggggggggg.', '.ggWKggWKgg.', 'gggggggggggg', 'gGgggggggggg', 'gggggggggGgg', '.gggggggggg.'], pal),
+    sprite(['............', '....gggg....', '.gggggggggg.', 'gggWKggWKggg', 'gggggggggggg', 'gGgggggggggg', 'gggggggggGgg', 'gggggggggggg'], pal),
+  ];
+}
+const SLIME_COLORS = ['#5ccf4a', '#4a9aff', '#e0a040', '#a05ad0', '#9ae0ff', '#9aa0b0', '#ff5a2a', '#c050ff', '#ff9ad0', '#e03040'];
 
 /* procedural boss sprites */
 function makeBossSprite(def) {
@@ -370,13 +395,19 @@ const isSolidT = t => t === 1 || t === 4 || t === 6 || t === 7;
 let L = null;
 const cam = { x: 0, y: 0, shake: 0 };
 
-function enemyPool(n) {
-  const p = ['S', 'O'];
-  if (n >= 1) p.push('B');
-  if (n >= 2) p.push('K');
-  if (n >= 4) p.push('N');
-  return p;
-}
+const POOLS = [
+  ['S', 'O', 'R', 'H'],
+  ['S', 'B', 'H', 'U', 'R'],
+  ['O', 'K', 'Z', 'H', 'Q'],
+  ['S', 'Q', 'R', 'Z', 'W'],
+  ['S', 'O', 'B', 'U', 'H'],
+  ['K', 'N', 'O', 'W', 'B'],
+  ['S', 'U', 'Z', 'K', 'N'],
+  ['W', 'B', 'K', 'R', 'Q'],
+  ['Z', 'B', 'Q', 'W', 'N', 'K'],
+  ['N', 'K', 'W', 'U', 'O', 'Z', 'H'],
+];
+function enemyPool(n) { return POOLS[n]; }
 function buildLevel(n) {
   const r = mulberry(9001 + n * 7919);
   const th = THEMES[n];
@@ -428,8 +459,11 @@ function buildLevel(n) {
         case 'G': lv.pickups.push(mkPickup('gem', px + 4, py + 4)); break;
         case 'P': lv.pickups.push(mkPickup('potion', px + 4, py + 8)); break;
         case 'F': lv.flags.push({ x: px + 2, y: py + 1, w: 10, h: 15, on: false }); break;
-        case 'S': case 'O': case 'B': case 'K': case 'N': case 'E': {
-          const type = c === 'E' ? pool2[(r() * pool2.length) | 0] : c;
+        case 'S': case 'O': case 'B': case 'K': case 'N': case 'E':
+        case 'R': case 'H': case 'W': case 'Q': case 'Z': case 'U': {
+          // 'E' is random from the world's pool; ground grunts are swapped for local monsters half the time
+          let type = c;
+          if (c === 'E' || ((c === 'S' || c === 'O') && r() < 0.5)) type = pool2[(r() * pool2.length) | 0];
           lv.enemies.push(mkEnemy(type, px, py, n)); break;
         }
       }
@@ -505,20 +539,26 @@ const EDEF = {
   B: { kind: 'bat', w: 12, h: 7, hp: 12, dmg: 10, coins: 2, fly: true },
   K: { kind: 'skel', w: 10, h: 15, hp: 30, dmg: 12, coins: 4 },
   N: { kind: 'knight', w: 12, h: 15, hp: 55, dmg: 18, coins: 6 },
+  R: { kind: 'mush', w: 10, h: 10, hp: 22, dmg: 10, coins: 3 },
+  H: { kind: 'hedge', w: 12, h: 8, hp: 26, dmg: 14, coins: 3, spiky: true },
+  W: { kind: 'ghost', w: 12, h: 13, hp: 20, dmg: 12, coins: 4, fly: true },
+  Q: { kind: 'frog', w: 12, h: 8, hp: 18, dmg: 12, coins: 3 },
+  Z: { kind: 'wasp', w: 12, h: 8, hp: 14, dmg: 10, coins: 3, fly: true },
+  U: { kind: 'rocky', w: 14, h: 14, hp: 70, dmg: 20, coins: 7, heavy: true },
 };
 function mkEnemy(type, px, py, n) {
   const d = EDEF[type];
   const hp = Math.round(d.hp * (1 + 0.28 * n));
   return {
     type, kind: d.kind, w: d.w, h: d.h, x: px + (T - d.w) / 2, y: py + T - d.h, hx: px, hy: py,
-    vx: 0, vy: 0, hp, max: hp, dmg: Math.round(d.dmg * (1 + 0.12 * n)), coins: d.coins + Math.floor(n / 2), fly: !!d.fly,
+    vx: 0, vy: 0, hp, max: hp, dmg: Math.round(d.dmg * (1 + 0.12 * n)), coins: d.coins + Math.floor(n / 2), fly: !!d.fly, spiky: !!d.spiky, heavy: !!d.heavy, alpha: 1, puff: 0,
     dir: Math.random() < 0.5 ? -1 : 1, face: -1, t: 30 + Math.random() * 60, state: 'idle', flash: 0, kb: 0, onGround: false, anim: Math.random() * 100, turnT: 0, hitBy: -1,
   };
 }
 
 /* ---------------- player ---------------- */
 const P = { x: 0, y: 0, w: 10, h: 14, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, airJumps: 0, wallDir: 0, wallLock: 0, dashT: 0, dashCD: 0, atkT: 0, atkCD: 0, atkDown: false, swing: 0, inv: 0, hp: 100, cut: false, plat: null, anim: 0, dead: 0, squash: 0 };
-const maxHP = () => 100 + 25 * save.hpLv;
+const maxHP = () => 100 + HP_STEP * save.hpLv;
 function resetPlayer(pos) {
   Object.assign(P, { x: pos.x, y: pos.y, vx: 0, vy: 0, onGround: false, dashT: 0, atkT: 0, inv: 60, dead: 0, plat: null, wallLock: 0 });
 }
@@ -572,7 +612,7 @@ function updatePlayer() {
   if (tapped('potion')) drinkPotion();
   // attack
   if (tapped('attack') && P.atkCD === 0 && P.dashT === 0) {
-    P.atkT = 14; P.atkCD = 20; P.swing++; P.atkDown = downH && !P.onGround; sfx('swing');
+    P.atkT = 14; P.atkCD = ATK_SPEED[save.atkLv].cd; P.swing++; P.atkDown = downH && !P.onGround; sfx('swing');
   }
 
   if (P.dashT > 0) {
@@ -599,15 +639,15 @@ function updatePlayer() {
     // jumping
     if (P.jbuf > 0) {
       if (P.onGround || P.coyote > 0) {
-        P.vy = -7.6; P.jbuf = 0; P.coyote = 0; P.onGround = false; P.cut = false; P.plat = null; P.squash = -4; sfx('jump');
+        P.vy = -6.8; P.jbuf = 0; P.coyote = 0; P.onGround = false; P.cut = false; P.plat = null; P.squash = -4; sfx('jump');
         for (let i = 0; i < 4; i++) L.particles.push(dust(P.x + P.w / 2, P.y + P.h));
       } else if (P.wallDir) {
         const climbing = inp === P.wallDir;   // holding toward the wall = climb kick
-        P.vy = climbing ? -7.4 : -7.2; P.vx = -P.wallDir * (climbing ? 1.3 : 2.8); P.wallLock = climbing ? 5 : 9;
+        P.vy = climbing ? -6.9 : -6.6; P.vx = -P.wallDir * (climbing ? 1.3 : 2.8); P.wallLock = climbing ? 5 : 9;
         P.face = -P.wallDir; P.jbuf = 0; P.cut = false; sfx('jump');
         for (let i = 0; i < 4; i++) L.particles.push(dust(P.x + (P.wallDir > 0 ? P.w : 0), P.y + P.h / 2));
       } else if (save.dbl && P.airJumps > 0) {
-        P.vy = -6.8; P.airJumps--; P.jbuf = 0; P.cut = false; sfx('djump');
+        P.vy = -6.1; P.airJumps--; P.jbuf = 0; P.cut = false; sfx('djump');
         burst(P.x + P.w / 2, P.y + P.h, 6, ['#ffffff', '#bfe8ff'], 1.5);
       }
     }
@@ -649,7 +689,7 @@ function updatePlayer() {
 
   // springs
   for (const s of L.springs) if (P.vy >= 0 && overlap(P, s) && P.y + P.h <= s.y + 6) {
-    P.vy = -11.8; P.springing = true; P.onGround = false; P.airJumps = 1; s.t = 12; sfx('spring');
+    P.vy = -11.2; P.springing = true; P.onGround = false; P.airJumps = 1; s.t = 12; sfx('spring');
   }
   // crumbling blocks: trigger when standing on them
   if (P.onGround && !P.plat) {
@@ -697,7 +737,7 @@ function attackBox(W) {
   const r = W.range;
   return { x: P.face > 0 ? P.x + P.w - 2 : P.x - r + 2, y: P.y - 3, w: r, h: P.h + 6 };
 }
-function pogo() { P.vy = -6.6; P.cut = true; P.airJumps = 1; P.atkT = Math.min(P.atkT, 4); }
+function pogo() { P.vy = -6.0; P.cut = true; P.airJumps = 1; P.atkT = Math.min(P.atkT, 4); }
 function hitWithBox(hb, dmg) {
   let hitSomething = false;
   for (const e of L.enemies) {
@@ -725,7 +765,7 @@ function hitWithBox(hb, dmg) {
   if (hitSomething) hitStop = 3;
 }
 function drinkPotion() {
-  if (save.potions <= 0) { toast('אין לך שיקויים! קנה בחנות'); return; }
+  if (save.potions <= 0) { toast('אין לך שיקויים! קנה בבית השדרוגים'); return; }
   if (P.hp >= maxHP()) { toast('החיים כבר מלאים'); return; }
   save.potions--; P.hp = Math.min(maxHP(), P.hp + 50); sfx('potion');
   floatText(P.x + P.w / 2, P.y - 6, '+50', '#5cff7a'); burst(P.x + P.w / 2, P.y + P.h / 2, 12, ['#ff6a8a', '#fff'], 1.5);
@@ -743,8 +783,10 @@ function pullLever(lv) {
 /* ---------------- enemies ---------------- */
 let hitStop = 0;
 function damageEnemy(e, dmg, dir) {
-  e.hp -= dmg; e.flash = 8; e.vx = dir * 2.5; e.kb = 10;
-  if (!e.fly) e.vy = -2;
+  if (e.kind === 'ghost' && e.alpha < 0.55) { burst(e.x + e.w / 2, e.y + e.h / 2, 4, ['#e8f0ff'], 1); return; }
+  e.hp -= dmg; e.flash = 8; e.vx = dir * (e.heavy ? 0.8 : 2.5); e.kb = e.heavy ? 4 : 10;
+  if (!e.fly && !e.heavy) e.vy = -2;
+  if (e.kind === 'hedge' && e.state === 'roll') { e.state = 'idle'; e.t = 40; }
   floatText(e.x + e.w / 2, e.y - 2, String(dmg), '#fff');
   sfx('hit'); burst(e.x + e.w / 2, e.y + e.h / 2, 5, ['#fff', '#ffe08a'], 2);
   if (e.kind === 'knight') e.turnT = Math.min(e.turnT, 6);
@@ -753,7 +795,7 @@ function damageEnemy(e, dmg, dir) {
 function killEnemy(e) {
   e.dead = true; L.kills++; save.kills++;
   sfx('kill'); cam.shake = 3;
-  const cols = { slime: ['#5ccf4a', '#8ef07a'], goblin: ['#6ab04a', '#8a5a2a'], bat: ['#5a3a7a', '#ff4040'], skel: ['#e8e4d8', '#8a6a3a'], knight: ['#9aa0b0', '#c03030'] }[e.kind];
+  const cols = { slime: ['#5ccf4a', '#8ef07a'], goblin: ['#6ab04a', '#8a5a2a'], bat: ['#5a3a7a', '#ff4040'], skel: ['#e8e4d8', '#8a6a3a'], knight: ['#9aa0b0', '#c03030'], mush: ['#d04040', '#f0e0c0'], hedge: ['#7a5a3a', '#e8c8a0'], ghost: ['#e8f0ff', '#2a2050'], frog: ['#4ab04a', '#e8f080'], wasp: ['#ffcc33', '#1a1020'], rocky: ['#8a7a6a', '#ff8a3a'] }[e.kind] || ['#fff'];
   burst(e.x + e.w / 2, e.y + e.h / 2, 16, cols, 2.5);
   dropCoins(e.x + e.w / 2, e.y + e.h / 2, e.coins);
   if (Math.random() < 0.05) L.pickups.push(mkPickup('potion', e.x + e.w / 2 - 3, e.y, 0, -3, true));
@@ -821,6 +863,65 @@ function updateEnemies() {
           }
         }
         break;
+      case 'mush':
+        e.vx = 0; e.face = sign(dx) || e.face;
+        if (dist < 210 && --e.t <= 0) {
+          e.t = 120 + Math.random() * 40; e.puff = 14;
+          for (const k of [-1, 0, 1]) L.projectiles.push({ kind: 'spore', col: '#c8f07a', x: ecx - 3, y: e.y, w: 6, h: 6, vx: clamp(dx / 70, -2, 2) + k * 0.9, vy: -4.2, grav: 0.14, dmg: e.dmg, life: 220 });
+          sfx('shoot');
+        }
+        if (e.puff > 0) e.puff--;
+        break;
+      case 'hedge':
+        if (e.state === 'roll') {
+          e.vx = e.dir * 3.4; e.t--;
+          if (Math.random() < 0.3) L.particles.push(dust(ecx, e.y + e.h));
+          if (e.t <= 0 || !groundAhead(e, e.dir) || wallAhead(e, e.dir)) { e.state = 'idle'; e.t = 60; e.vx = 0; }
+        } else {
+          e.vx = e.t > 0 ? 0 : e.dir * 0.4; if (e.t > 0) e.t--;
+          if (!groundAhead(e, e.dir) || wallAhead(e, e.dir)) e.dir = -e.dir;
+          if (e.t <= 0 && Math.abs(dx) < 120 && Math.abs(dy) < 24) { e.dir = sign(dx) || e.dir; e.state = 'roll'; e.t = 70; }
+        }
+        e.face = e.dir;
+        break;
+      case 'ghost': {
+        // shy ghost: freezes and fades when Dan looks at it, creeps closer when he looks away
+        const watched = sign(ecx - pcx) === P.face && dist < 260;
+        e.alpha += ((watched ? 0.3 : 1) - e.alpha) * 0.06;
+        if (watched || dist > 260) { e.vx *= 0.85; e.vy *= 0.85; }
+        else { e.vx += (dx / dist * 0.9 - e.vx) * 0.08; e.vy += (dy / dist * 0.9 - e.vy) * 0.08; }
+        e.face = sign(dx) || e.face;
+        break;
+      }
+      case 'frog':
+        if (e.onGround) {
+          e.vx = 0;
+          if (--e.t <= 0) {
+            let dir = Math.abs(dx) < 180 ? sign(dx) || 1 : e.dir;
+            if (!groundAhead(e, dir)) dir = -dir;
+            e.dir = dir; e.vx = dir * 2.2; e.vy = -6; e.t = 55 + Math.random() * 40;
+          }
+        }
+        e.face = e.dir;
+        break;
+      case 'wasp':
+        e.x = e.hx + Math.sin(e.anim * 0.025) * 40; e.y = e.hy - 8 + Math.sin(e.anim * 0.11) * 3;
+        e.face = Math.cos(e.anim * 0.025) > 0 ? 1 : -1; e.vx = e.vy = 0;
+        if (e.t > 0) e.t--;
+        if (e.t <= 0 && Math.abs(dx) < 14 && dy > 0 && dy < 200) {
+          e.t = 70; L.projectiles.push({ kind: 'sting', col: '#1a1020', x: ecx - 2, y: e.y + e.h, w: 4, h: 7, vx: 0, vy: 3.2, dmg: e.dmg, life: 120 }); sfx('shoot');
+        }
+        break;
+      case 'rocky':
+        e.face = sign(dx) || e.face;
+        e.vx = Math.abs(dx) < 200 && Math.abs(dx) > 40 && groundAhead(e, e.face) && !wallAhead(e, e.face) ? e.face * 0.35 : 0;
+        if (dist < 230 && --e.t <= 0) {
+          e.t = 150 + Math.random() * 40; e.puff = 12;
+          L.projectiles.push({ kind: 'rock', col: '#8a7a6a', x: ecx - 5, y: e.y - 6, w: 10, h: 10, vx: clamp(dx / 58, -4, 4), vy: -5, grav: 0.17, dmg: e.dmg, life: 240 });
+          sfx('slam');
+        }
+        if (e.puff > 0) e.puff--;
+        break;
       case 'knight':
         if (sign(dx) !== e.face && sign(dx) !== 0) { e.turnT++; if (e.turnT > 45) { e.face = sign(dx); e.turnT = 0; } } else e.turnT = 0;
         if (Math.abs(dx) < 220 && Math.abs(dy) < 40 && e.turnT === 0) {
@@ -836,11 +937,12 @@ function updateEnemies() {
       e.onGround = h === 1; if (h) e.vy = 0;
       if (e.kind === 'slime' || e.kind === 'goblin') e.face = sign(e.vx) || e.face;
       if (e.y > LH + 40) { e.dead = true; }
-    } else { e.x += e.vx; e.y += e.vy; }
+    } else if (e.kind !== 'wasp') { e.x += e.vx; e.y += e.vy; }
     // contact
     if (!P.dead && overlap(P, e)) {
-      const stomp = P.vy > 1 && P.y + P.h - P.vy <= e.y + 4 && !e.fly;
-      if (stomp) { P.vy = -6; P.cut = true; damageEnemy(e, Math.ceil(WEAPONS[save.weapon].dmg * 0.6), sign(dx) || 1); }
+      if (e.kind === 'ghost' && e.alpha < 0.55) continue;
+      const stomp = P.vy > 1 && P.y + P.h - P.vy <= e.y + 4 && !e.fly && !e.spiky;
+      if (stomp) { P.vy = -5.6; P.cut = true; damageEnemy(e, Math.ceil(WEAPONS[save.weapon].dmg * 0.6), sign(dx) || 1); }
       else hurtPlayer(e.dmg, ecx);
     }
   }
@@ -849,7 +951,7 @@ function updateEnemies() {
 
 /* ---------------- boss ---------------- */
 let bossSprites = [];
-function bossHP(n) { return 220 + n * 150; }
+function bossHP(n) { return 140 + n * 150; }
 function startBoss() {
   const a = L.arena; a.active = true;
   for (let y = 0; y < ROWS - 2; y++) setTile(a.gateX, y, 7);
@@ -952,7 +1054,7 @@ function updateBoss() {
     case 'summon':
       b.vx *= 0.8;
       if (--b.t <= 0) {
-        const pool = enemyPool(L.n).filter(k => k !== 'N' && k !== 'K');
+        const pool = enemyPool(L.n).filter(k => !'NKUR'.includes(k)); if (!pool.length) pool.push('S');
         for (let i = 0; i < 2; i++) {
           const k = pool[(Math.random() * pool.length) | 0];
           const e = mkEnemy(k, bcx - 8 + (i ? 30 : -30), A.floor - T - (k === 'B' ? 40 : 0), L.n); e.minion = true; e.coins = 1; e.state = k === 'B' ? 'chase' : 'idle'; e.t = 9999;
@@ -1040,7 +1142,7 @@ function updatePickups() {
     }
     if (k.delay > 0) { k.delay--; continue; }
     const dx = P.x + P.w / 2 - (k.x + k.w / 2), dy = P.y + P.h / 2 - (k.y + k.h / 2);
-    if (!P.dead && Math.hypot(dx, dy) < 26 && k.type !== 'potion') { k.x += dx * 0.18; k.y += dy * 0.18; }
+    if (!P.dead && Math.hypot(dx, dy) < MAGNET[save.magLv].r && k.type !== 'potion') { k.x += dx * 0.18; k.y += dy * 0.18; }
     if (!P.dead && overlap(P, k)) {
       k.dead = true;
       if (k.type === 'coin') { save.coins += 1; L.coinsGot += 1; sfx('coin'); }
@@ -1174,8 +1276,17 @@ function render() {
     else if (e.kind === 'bat') spr = ESPR.bat[(e.anim >> 3) % 2];
     else if (e.kind === 'goblin') { spr = ESPR.goblin[Math.abs(e.vx) > 0.1 ? (e.anim >> (e.state === 'charge' ? 2 : 3)) % 2 : 0]; if (e.state === 'wind') ox = (frame % 2) ? 1 : -1; }
     else if (e.kind === 'skel') spr = ESPR.skel[0];
+    else if (e.kind === 'mush') spr = ESPR.mush[e.puff > 0 ? 1 : 0];
+    else if (e.kind === 'hedge') spr = ESPR.hedge[e.state === 'roll' ? 1 : 0];
+    else if (e.kind === 'ghost') spr = ESPR.ghost[e.alpha < 0.6 ? 1 : 0];
+    else if (e.kind === 'frog') spr = ESPR.frog[e.onGround ? 0 : 1];
+    else if (e.kind === 'wasp') spr = ESPR.wasp[(e.anim >> 2) % 2];
+    else if (e.kind === 'rocky') { spr = ESPR.rocky[0]; if (e.puff > 0) ox = (frame % 2) ? 1 : -1; }
     else spr = ESPR.knight[0];
-    drawSpr(spr, e, e.face < 0, white, ox);
+    if (e.kind === 'ghost') ctx.globalAlpha = e.alpha;
+    const flip = e.kind === 'hedge' && e.state === 'roll' ? (e.anim >> 2) % 2 === 0 : e.face < 0;
+    drawSpr(spr, e, flip, white, ox, e.kind === 'ghost' ? Math.sin(e.anim * 0.06) * 2 : 0);
+    ctx.globalAlpha = 1;
     if (e.kind === 'goblin' && e.state === 'tired') drawRectW(e.x + e.w / 2 + 4, e.y - 4 - ((frame >> 3) % 3), 2, 3, '#7fd6ff');
     if (e.kind === 'goblin' && e.state === 'wind') drawRectW(e.x + e.w / 2 - 1, e.y - 8, 2, 5, '#ff3030');
     if (e.kind === 'knight' && e.turnT > 0) drawRectW(e.x + e.w / 2 - 1, e.y - 7, 2, 4, '#ffd54a');
@@ -1199,11 +1310,13 @@ function render() {
     const body = P.atkT > 4 && !P.atkDown ? 'atk' : 'idle';
     drawSpr(danSpr[body + '_' + legs], P, P.face < 0, false, 0, 0);
     if (P.atkT > 3) drawSlash();
+    else drawHeld(ctx, Math.round(P.x - cam.x) + (P.face > 0 ? 8 : 1), Math.round(P.y - cam.y) + 7, P.face, save.weapon);
   }
   // projectiles
   for (const p of L.projectiles) if (onScreen(p)) {
     const x = Math.round(p.x - cam.x), y = Math.round(p.y - cam.y);
-    if (p.kind === 'bone') { ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y - 1, p.w + 2, p.h + 2); ctx.fillStyle = '#e8e4d8'; ctx.fillRect(x, y + 1, p.w, 2); ctx.fillRect(x, y, 2, 4); ctx.fillRect(x + p.w - 2, y, 2, 4); }
+    if (p.kind === 'sting') { ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y - 1, p.w + 2, p.h + 2); ctx.fillStyle = '#ffcc33'; ctx.fillRect(x, y, p.w, 3); ctx.fillStyle = '#e8e4d8'; ctx.fillRect(x + 1, y + 3, 2, 4); }
+    else if (p.kind === 'bone') { ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y - 1, p.w + 2, p.h + 2); ctx.fillStyle = '#e8e4d8'; ctx.fillRect(x, y + 1, p.w, 2); ctx.fillRect(x, y, 2, 4); ctx.fillRect(x + p.w - 2, y, 2, 4); }
     else if (p.kind === 'wave') { ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y + 3, p.w + 2, p.h - 2); ctx.fillStyle = p.col; for (let i = 0; i < p.w; i++) { const h = p.h - 2 - Math.abs(i - p.w / 2) * 1.2 + Math.sin(frame * 0.5 + i) * 1.5; ctx.fillRect(x + i, y + p.h - h, 1, h); } }
     else { ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y, p.w + 2, p.h); ctx.fillRect(x, y - 1, p.w, p.h + 2); ctx.fillStyle = p.col || '#ff5050'; ctx.fillRect(x, y, p.w, p.h); ctx.fillStyle = '#fff'; ctx.fillRect(x + 2, y + 2, 2, 2); }
   }
@@ -1239,10 +1352,9 @@ function drawSlash() {
     if (save.weapon >= 2) ctx.fillRect(Math.round(cx + P.face * Math.cos(a) * (r - 4)), Math.round(cy + Math.sin(a) * (r - 4) * 0.8), 1, 1);
   }
   ctx.globalAlpha = 1;
-  if (save.weapon === 0) { ctx.fillStyle = '#f2c49a'; ctx.fillRect(Math.round(cx + P.face * 10) - 2, Math.round(cy - 1), 4, 4); }
-  else { // weapon blade
+  { // weapon blade
     const a = cur, len = W.range - 6;
-    for (let i = 4; i < len; i += 1) { ctx.fillStyle = i < 7 ? '#6a4a2a' : W.col; ctx.fillRect(Math.round(cx + P.face * Math.cos(a) * i), Math.round(cy + Math.sin(a) * i * 0.8), 2, 2); }
+    for (let i = 4; i < len; i += 1) { ctx.fillStyle = i < 7 ? '#6a4a2a' : i < 8 ? W.guard : W.col; ctx.fillRect(Math.round(cx + P.face * Math.cos(a) * i), Math.round(cy + Math.sin(a) * i * 0.8), 2, 2); }
   }
 }
 
@@ -1348,11 +1460,11 @@ function titleScreen() {
     <div class="panel narrow">
       <h1 class="title">דן נגד המפלצות</h1>
       <p class="sub">דן לא צריך סיבה. הוא פשוט רוצה להרביץ לכל המפלצות. כי בא לו.</p>
-      <div class="dan-hero"><canvas id="heroCv" width="14" height="18"></canvas></div>
+      <div class="dan-hero"><canvas id="heroCv" width="28" height="22"></canvas></div>
       <p class="who">שלום <b>${esc(account)}</b> · 🏅 ${medals}/10 מדליות · 🪙 ${save.coins}</p>
       <div class="col">
         <button class="btn big" id="bPlay">${save.unlocked > 1 || medals ? 'המשך הרפתקה' : 'התחל לשחק'}</button>
-        <button class="btn" id="bShop">חנות 🛒</button>
+        <button class="btn" id="bShop">🏠 בית השדרוגים</button>
         <button class="btn" id="bMedals">המדליות שלי 🏅</button>
         <button class="btn" id="bHelp">איך משחקים?</button>
         <button class="btn ghost" id="bOut">התנתק</button>
@@ -1365,7 +1477,24 @@ function titleScreen() {
   $('bHelp').onclick = () => helpScreen();
   $('bOut').onclick = () => logout();
 }
-function drawHero(c) { const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); x.drawImage(danSpr.idle_idle.n, 0, 0); }
+function drawHero(c) {
+  if (!c) return;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height);
+  const ox = Math.floor((c.width - 14) / 2), oy = c.height - 18;
+  x.drawImage(danSpr.idle_idle.n, ox, oy);
+  drawHeld(x, ox + 10, oy + 10, 1, save.weapon);
+}
+// sword in Dan's hand; (hx, hy) is the hand pixel
+function drawHeld(c, hx, hy, face, wi) {
+  const W = WEAPONS[wi], len = 7 + wi, wide = wi >= 3;
+  const pts = []; for (let i = 0; i < len; i++) pts.push([hx + face * Math.floor(i / 3), hy - i]);
+  c.fillStyle = OUTLINE;
+  for (const [x, y] of pts) c.fillRect(x - 1, y - 1, wide ? 4 : 3, 3);
+  c.fillRect(hx - 2, hy - 3, 5, 3);
+  pts.forEach(([x, y], i) => { c.fillStyle = i < 2 ? '#5a3a1e' : W.col; c.fillRect(x, y, wide && i >= 2 ? 2 : 1, 1); });
+  c.fillStyle = W.guard; c.fillRect(hx - 1, hy - 2, 3, 1);
+  if (wi >= 4) { c.fillStyle = '#ffffff'; c.fillRect(pts[len - 2][0], pts[len - 2][1], 1, 1); }
+}
 function helpScreen() {
   show(`
     <div class="panel">
@@ -1387,7 +1516,8 @@ function helpScreen() {
         <li>לאבירים יש מגן – תקוף מאחור או מלמעלה. גובלינים מסתערים – תתחמק ותרביץ כשהם עייפים.</li>
         <li>בוסים שמסתערים לתוך קיר מסתחררים – ואז הם חוטפים נזק כפול!</li>
         <li>מדליה: זהב = בלי ליפול בכלל, כסף = עד 2 נפילות, ארד = סיימת.</li>
-        <li>אספו מטבעות וקנו שריון, נשק, חיים, קפיצה כפולה ודאש. אפשר לשחק שוב שלבים כדי לאסוף עוד.</li>
+        <li>דן מתחיל עם חרב עץ חלשה. אספו מטבעות ושדרגו בבית השדרוגים: חיים, חרב, שריון, מהירות מכה, מגנט, קפיצה כפולה ודאש. אפשר לשחק שוב שלבים כדי לאסוף עוד.</li>
+        <li>מפלצות חדשות: קיפוד (אל תקפוץ עליו!), רוח רפאים (קופאת כשמסתכלים עליה – תסתובב ותרביץ מהר), פטרייה יורקת, צפרדע קופצת, צרעה מפציצה וגולם סלעים.</li>
       </ul>
       <button class="btn" id="bBack">חזרה</button>
     </div>`, 'title-bg');
@@ -1417,7 +1547,7 @@ function mapScreen() {
           ${save.medals[i] ? medalSVG(save.medals[i], MEDALS[i].sym, 30) : ''}
         </button>`;
       }).join('')}</div>
-      <div class="row"><button class="btn" id="bShop">חנות 🛒 <span class="coin">🪙 ${save.coins}</span></button><button class="btn ghost" id="bBack">תפריט</button></div>
+      <div class="row"><button class="btn" id="bShop">🏠 שדרוגים <span class="coin">🪙 ${save.coins}</span></button><button class="btn ghost" id="bBack">תפריט</button></div>
     </div>`, 'title-bg');
   scr.querySelectorAll('.node:not(.locked)').forEach(b => b.onclick = () => startLevel(+b.dataset.l));
   $('bShop').onclick = () => shopScreen(() => mapScreen());
@@ -1425,27 +1555,60 @@ function mapScreen() {
 }
 function shopScreen(back, nextLevel) {
   state = 'shop'; setGameUI(false);
-  const items = [];
+  const A = ARMORS[save.armor], W = WEAPONS[save.weapon];
   const nA = ARMORS[save.armor + 1], nW = WEAPONS[save.weapon + 1];
-  items.push({ id: 'armor', icon: '🛡️', name: nA ? nA.n : ARMORS[save.armor].n, desc: nA ? `חוסם ${Math.round(nA.red * 100)}% מהנזק (עכשיו ${Math.round(ARMORS[save.armor].red * 100)}%)` : 'השריון הכי טוב!', price: nA ? nA.p : null, color: nA ? nA.body : ARMORS[save.armor].body });
-  items.push({ id: 'weapon', icon: '⚔️', name: nW ? nW.n : WEAPONS[save.weapon].n, desc: nW ? `נזק ${nW.dmg} (עכשיו ${WEAPONS[save.weapon].dmg}), טווח ארוך יותר` : 'הנשק הכי חזק!', price: nW ? nW.p : null, color: nW ? nW.col : WEAPONS[save.weapon].col });
-  items.push({ id: 'hp', icon: '❤️', name: 'לב נוסף', desc: save.hpLv < 5 ? `מקסימום חיים ${maxHP()} ← ${maxHP() + 25}` : 'מקסימום!', price: save.hpLv < 5 ? HP_PRICES[save.hpLv] : null });
-  items.push({ id: 'dbl', icon: '🪽', name: 'קפיצה כפולה', desc: save.dbl ? 'כבר יש לך!' : 'קפוץ שוב באוויר', price: save.dbl ? null : DBL_PRICE });
-  items.push({ id: 'dash', icon: '💨', name: 'דאש', desc: save.dash ? 'כבר יש לך! (K / Shift)' : 'זינוק מהיר שעובר דרך התקפות', price: save.dash ? null : DASH_PRICE });
-  items.push({ id: 'potion', icon: '🧪', name: 'שיקוי חיים', desc: `+50 חיים (יש לך ${save.potions}/${MAX_POTIONS})`, price: save.potions < MAX_POTIONS ? POTION_PRICE : null });
+  const atk = ATK_SPEED[save.atkLv], nAtk = ATK_SPEED[save.atkLv + 1];
+  const mag = MAGNET[save.magLv], nMag = MAGNET[save.magLv + 1];
+  const perSec = cd => (60 / cd).toFixed(1);
+  const track = (id, icon, title, lv, max, cur, next, price, color) => `
+    <div class="up ${price == null ? 'maxed' : save.coins < price ? 'poor' : ''}">
+      <div class="ic" style="--ic:${color || 'var(--line)'}">${icon}</div>
+      <div class="info">
+        <b>${title}</b>
+        <small>${cur}${next != null ? ` <span class="arrow">←</span> <em>${next}</em>` : ''}</small>
+        ${max > 1 ? `<div class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+      </div>
+      ${price == null ? '<span class="tag">MAX</span>' : `<button class="btn buy" data-id="${id}" ${save.coins < price ? 'disabled' : ''}>🪙 ${price}</button>`}
+    </div>`;
   show(`
-    <div class="panel wide">
-      <h2>החנות של הנפח</h2>
-      <p class="who">🪙 <b id="shopCoins">${save.coins}</b> מטבעות · שריון: ${ARMORS[save.armor].n} · נשק: ${WEAPONS[save.weapon].n}</p>
-      <div class="shop">${items.map(it => `
-        <div class="item ${it.price == null ? 'maxed' : save.coins < it.price ? 'poor' : ''}">
-          <div class="ic" ${it.color ? `style="--ic:${it.color}"` : ''}>${it.icon}</div>
-          <div class="info"><b>${it.name}</b><small>${it.desc}</small></div>
-          ${it.price == null ? '<span class="tag">✔</span>' : `<button class="btn buy" data-id="${it.id}" ${save.coins < it.price ? 'disabled' : ''}>🪙 ${it.price}</button>`}
-        </div>`).join('')}</div>
+    <div class="panel wide upg">
+      <h2>🏠 בית השדרוגים</h2>
+      <div class="upg-grid">
+        <div class="hero-card">
+          <div class="hero-stage"><canvas id="heroCv" width="28" height="22"></canvas></div>
+          <div class="coins-big">🪙 <b>${save.coins}</b></div>
+          <div class="stats">
+            <div><span>❤️ חיים</span><b>${maxHP()}</b></div>
+            <div><span>⚔️ נזק</span><b>${W.dmg}</b></div>
+            <div><span>🛡️ הגנה</span><b>${Math.round(A.red * 100)}%</b></div>
+            <div><span>⚡ מכות לשנייה</span><b>${perSec(atk.cd)}</b></div>
+            <div><span>🧲 מגנט</span><b>${mag.r}</b></div>
+            <div><span>🧪 שיקויים</span><b>${save.potions}/${MAX_POTIONS}</b></div>
+          </div>
+          <small class="gear">${W.n} · ${A.n}${save.dbl ? ' · קפיצה כפולה' : ''}${save.dash ? ' · דאש' : ''}</small>
+        </div>
+        <div class="tracks">
+          <h4>כוח</h4>
+          ${track('hp', '❤️', 'חיים', save.hpLv, HP_PRICES.length, `${maxHP()} חיים`, save.hpLv < HP_PRICES.length ? `${maxHP() + HP_STEP}` : null, save.hpLv < HP_PRICES.length ? HP_PRICES[save.hpLv] : null, '#e03050')}
+          ${track('weapon', '⚔️', nW ? nW.n : W.n, save.weapon, WEAPONS.length - 1, `${W.n} · נזק ${W.dmg}`, nW ? `נזק ${nW.dmg}` : null, nW ? nW.p : null, nW ? nW.col : W.col)}
+          ${track('armor', '🛡️', nA ? nA.n : A.n, save.armor, ARMORS.length - 1, `חוסם ${Math.round(A.red * 100)}%`, nA ? `${Math.round(nA.red * 100)}%` : null, nA ? nA.p : null, nA ? nA.body : A.body)}
+          ${track('atk', '⚡', 'מהירות מכה', save.atkLv, ATK_SPEED.length - 1, `${perSec(atk.cd)} לשנייה`, nAtk ? perSec(nAtk.cd) : null, nAtk ? nAtk.p : null, '#ffcc33')}
+          ${track('mag', '🧲', 'מגנט מטבעות', save.magLv, MAGNET.length - 1, `טווח ${mag.r}`, nMag ? nMag.r : null, nMag ? nMag.p : null, '#7fb8ff')}
+          <h4>יכולות</h4>
+          ${track('dbl', '🪽', 'קפיצה כפולה', save.dbl ? 1 : 0, 1, save.dbl ? 'יש לך!' : 'קפוץ שוב באוויר', null, save.dbl ? null : DBL_PRICE, '#bfe8ff')}
+          ${track('dash', '💨', 'דאש (K / Shift)', save.dash ? 1 : 0, 1, save.dash ? 'יש לך!' : 'זינוק מהיר שעובר דרך התקפות', null, save.dash ? null : DASH_PRICE, '#c8c8d0')}
+          <h4>חנות</h4>
+          ${track('potion', '🧪', 'שיקוי חיים (Q)', save.potions, MAX_POTIONS, '+50 חיים', null, save.potions < MAX_POTIONS ? POTION_PRICE : null, '#ff6a8a')}
+        </div>
+      </div>
       <div class="row">${nextLevel != null ? `<button class="btn big" id="bNext">לשלב ${nextLevel + 1} ←</button>` : ''}<button class="btn ghost" id="bBack">חזרה</button></div>
     </div>`, 'title-bg');
-  scr.querySelectorAll('.buy').forEach(b => b.onclick = () => { buy(b.dataset.id); shopScreen(back, nextLevel); });
+  drawHero($('heroCv'));
+  scr.querySelectorAll('.buy').forEach(b => b.onclick = () => {
+    const y = scr.scrollTop; buy(b.dataset.id); shopScreen(back, nextLevel); scr.scrollTop = y;
+    const card = scr.querySelector(`.buy[data-id="${b.dataset.id}"]`) || scr.querySelector('.hero-card');
+    const hero = scr.querySelector('.hero-card'); hero.classList.add('pop'); if (card && card.focus) card.focus();
+  });
   $('bBack').onclick = back;
   if (nextLevel != null) $('bNext').onclick = () => startLevel(nextLevel);
 }
@@ -1453,7 +1616,9 @@ function buy(id) {
   const pay = p => { if (save.coins < p) return false; save.coins -= p; sfx('buy'); return true; };
   if (id === 'armor' && ARMORS[save.armor + 1] && pay(ARMORS[save.armor + 1].p)) { save.armor++; buildDan(); }
   if (id === 'weapon' && WEAPONS[save.weapon + 1] && pay(WEAPONS[save.weapon + 1].p)) save.weapon++;
-  if (id === 'hp' && save.hpLv < 5 && pay(HP_PRICES[save.hpLv])) save.hpLv++;
+  if (id === 'hp' && save.hpLv < HP_PRICES.length && pay(HP_PRICES[save.hpLv])) save.hpLv++;
+  if (id === 'atk' && ATK_SPEED[save.atkLv + 1] && pay(ATK_SPEED[save.atkLv + 1].p)) save.atkLv++;
+  if (id === 'mag' && MAGNET[save.magLv + 1] && pay(MAGNET[save.magLv + 1].p)) save.magLv++;
   if (id === 'dbl' && !save.dbl && pay(DBL_PRICE)) save.dbl = true;
   if (id === 'dash' && !save.dash && pay(DASH_PRICE)) save.dash = true;
   if (id === 'potion' && save.potions < MAX_POTIONS && pay(POTION_PRICE)) save.potions++;
@@ -1495,7 +1660,7 @@ function finishLevel() {
       <p class="who">⏱ ${fmtTime(L.time)} · נפילות: ${L.deaths} · מפלצות: ${L.kills} · 🪙 +${L.coinsGot}</p>
       ${tier < 3 ? `<p class="hint">${tier === 2 ? 'סיים בלי ליפול בכלל כדי לקבל זהב!' : 'עד 2 נפילות = כסף, בלי נפילות = זהב'}</p>` : '<p class="hint">מושלם! דן אפילו לא התאמץ.</p>'}
       ${prev > tier ? `<p class="hint small">השיא שלך נשאר: ${tierName(prev)}</p>` : ''}
-      <div class="col"><button class="btn big" id="bGo">${last ? 'סוף המשחק ←' : 'לחנות ולשלב הבא ←'}</button><button class="btn ghost" id="bMap">למפה</button></div>
+      <div class="col"><button class="btn big" id="bGo">${last ? 'סוף המשחק ←' : 'לשדרוגים ולשלב הבא ←'}</button><button class="btn ghost" id="bMap">למפה</button></div>
     </div>`, 'title-bg');
   $('bGo').onclick = () => last ? endingScreen() : shopScreen(() => mapScreen(), n + 1);
   $('bMap').onclick = () => mapScreen();
@@ -1516,6 +1681,7 @@ function endingScreen() {
 function startLevel(n) {
   L = buildLevel(n);
   buildTiles(L.th, n * 31 + 7);
+  makeSlime(SLIME_COLORS[n]);
   buildDan();
   P.hp = maxHP(); resetPlayer(L.spawn); P.inv = 0; P.face = 1;
   updateCamera(true);

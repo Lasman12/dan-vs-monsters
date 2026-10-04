@@ -388,7 +388,19 @@ function setupTouch() {
     if (e.target.closest && e.target.closest('#fsBtn')) return;
     e.preventDefault(); initAudio();
     const now = new Set();
-    for (const t of e.touches) { if (t.identifier === joyId) continue; const el = document.elementFromPoint(t.clientX, t.clientY); const bt = el && el.closest('[data-k]'); if (bt) now.add(bt.dataset.k); }
+    const vmin = Math.min(innerWidth, innerHeight) / 100;
+    const centers = btns.map(bt => { const r = bt.getBoundingClientRect(); return { k: bt.dataset.k, x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, exact: bt.classList.contains('tpause') }; });
+    for (const t of e.touches) {
+      if (t.identifier === joyId) continue;
+      // a touch presses the closest button, even if the finger is a bit outside the circle
+      let best = null, bestD = Infinity;
+      for (const c of centers) {
+        const d = Math.hypot(t.clientX - c.x, t.clientY - c.y) - c.r;
+        const reach = c.exact ? 0 : 9 * vmin;
+        if (d < reach && d < bestD) { best = c; bestD = d; }
+      }
+      if (best) now.add(best.k);
+    }
     for (const bt of btns) { const k = bt.dataset.k, on = now.has(k); if (on !== !!keys[k]) setKey(k, on); bt.classList.toggle('down', on); }
   };
   for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) tc.addEventListener(ev, sync, { passive: false });
@@ -604,7 +616,7 @@ function mkEnemy(type, px, py, n) {
 }
 
 /* ---------------- player ---------------- */
-const P = { x: 0, y: 0, w: 10, h: 14, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, airJumps: 0, wallDir: 0, wallLock: 0, dashT: 0, dashCD: 0, atkT: 0, atkCD: 0, atkDown: false, swing: 0, inv: 0, hp: 100, cut: false, plat: null, anim: 0, dead: 0, squash: 0 };
+const P = { x: 0, y: 0, w: 10, h: 14, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, airJumps: 0, wallDir: 0, wallLock: 0, dashT: 0, dashCD: 0, atkT: 0, atkCD: 0, abuf: 0, atkDown: false, swing: 0, inv: 0, hp: 100, cut: false, plat: null, anim: 0, dead: 0, squash: 0 };
 const maxHP = () => 100 + HP_STEP * save.hpLv;
 function resetPlayer(pos) {
   Object.assign(P, { x: pos.x, y: pos.y, vx: 0, vy: 0, onGround: false, dashT: 0, atkT: 0, inv: 60, dead: 0, plat: null, wallLock: 0 });
@@ -658,8 +670,10 @@ function updatePlayer() {
   // potion
   if (tapped('potion')) drinkPotion();
   // attack
-  if (tapped('attack') && P.atkCD === 0 && P.dashT === 0) {
-    P.atkT = 14; P.atkCD = ATK_SPEED[save.atkLv].cd; P.swing++; P.atkDown = downH && !P.onGround; sfx('swing');
+  // early taps are remembered, and holding the attack button keeps swinging
+  if (tapped('attack')) P.abuf = 12; else if (P.abuf > 0) P.abuf--;
+  if ((P.abuf > 0 || held('attack')) && P.atkCD === 0 && P.dashT === 0) {
+    P.abuf = 0; P.atkT = 14; P.atkCD = ATK_SPEED[save.atkLv].cd; P.swing++; P.atkDown = downH && !P.onGround; sfx('swing');
   }
 
   if (P.dashT > 0) {
@@ -1740,7 +1754,7 @@ function startLevel(n) {
   hudCache = {};
   state = 'play'; setGameUI(true);
   toast(`שלב ${n + 1} — ${L.th.name}`, 2200);
-  if (!save.tips.start) { save.tips.start = 1; setTimeout(() => toast(TIPS.start, 5000), 2300); persist(); }
+  if (!save.tips.start) { save.tips.start = 1; setTimeout(() => toast(IS_TOUCH ? 'ג׳ויסטיק משמאל לזוז · ⤒ לקפוץ · ⚔ להרביץ (אפשר להחזיק)' : TIPS.start, 5000), 2300); persist(); }
 }
 
 /* ---------------- main loop ---------------- */

@@ -3,7 +3,8 @@
    דן נגד המפלצות — Dan vs. The Monsters
    Pixel-art platformer. Canvas 480x270, 16px tiles, 60Hz fixed step.
    ========================================================= */
-const T = 16, VW = 480, VH = 270, ROWS = 20, LH = ROWS * T;
+const T = 16, ROWS = 20, LH = ROWS * T;
+let VW = 480, VH = 270;   // on phones: zoomed in and widened to the screen's aspect ratio
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -376,18 +377,34 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => setKey(e.code, false));
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window && !matchMedia('(pointer: fine)').matches);
 function setupTouch() {
-  const tc = $('touch');
-  if (!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
-  tc.classList.add('on');
-  tc.querySelectorAll('[data-k]').forEach(b => {
-    const k = b.dataset.k;
-    const on = e => { e.preventDefault(); initAudio(); setKey(k, true); b.classList.add('down'); };
-    const off = e => { e.preventDefault(); setKey(k, false); b.classList.remove('down'); };
-    b.addEventListener('touchstart', on, { passive: false }); b.addEventListener('touchend', off, { passive: false }); b.addEventListener('touchcancel', off, { passive: false });
-    b.addEventListener('mousedown', on); b.addEventListener('mouseup', off); b.addEventListener('mouseleave', off);
-  });
+  if (!IS_TOUCH) return;
+  document.body.classList.add('touch');
+  const tc = $('touch'); tc.classList.add('on');
+  const btns = [...tc.querySelectorAll('[data-k]')];
+  // every touch is mapped to whatever button is under the finger, so sliding from ◀ to ▶ works
+  const sync = e => {
+    if (e.target.closest && e.target.closest('#fsBtn')) return;
+    e.preventDefault(); initAudio();
+    const now = new Set();
+    for (const t of e.touches) { const el = document.elementFromPoint(t.clientX, t.clientY); const bt = el && el.closest('[data-k]'); if (bt) now.add(bt.dataset.k); }
+    for (const bt of btns) { const k = bt.dataset.k, on = now.has(k); if (on !== !!keys[k]) setKey(k, on); bt.classList.toggle('down', on); }
+  };
+  for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) tc.addEventListener(ev, sync, { passive: false });
+  $('fsBtn').addEventListener('click', () => goFullscreen(true));
 }
+function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches; }
+function goFullscreen(force) {
+  if (!IS_TOUCH && !force) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => { }); } catch (e) { } };
+  if (!isFullscreen() && req) { try { const pr = req.call(el, { navigationUI: 'hide' }); if (pr && pr.then) pr.then(lock).catch(() => { }); else lock(); } catch (e) { } }
+  else lock();
+}
+document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fs', isFullscreen()); setTimeout(fit, 50); });
+document.addEventListener('contextmenu', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
 
 /* ---------------- level building ---------------- */
 // tiles: 0 empty, 1 solid, 2 one-way, 3 spike, 4 crumble, 5 hazard, 6 door, 7 gate
@@ -1192,8 +1209,9 @@ function updateWorld() {
 function updateCamera(snap) {
   let tx = P.x + P.w / 2 - VW / 2 + P.face * 30;
   let ty = P.y + P.h / 2 - VH / 2 - 10;
-  if (L.arena.active && !L.arena.done) tx = L.arena.camX;
-  tx = clamp(tx, 0, L.w * T - VW); ty = clamp(ty, 0, LH - VH);
+  if (L.arena.active && !L.arena.done) tx = (L.arena.left + L.arena.right) / 2 - VW / 2;
+  // on phones the camera may sink below the level so the action sits above the touch buttons
+  tx = clamp(tx, 0, L.w * T - VW); ty = clamp(ty, 0, LH - VH + (IS_TOUCH ? 44 : 0));
   if (snap) { cam.x = tx; cam.y = ty; } else { cam.x += (tx - cam.x) * 0.12; cam.y += (ty - cam.y) * 0.1; }
   if (cam.shake > 0) cam.shake *= 0.85; if (cam.shake < 0.3) cam.shake = 0;
 }
@@ -1222,19 +1240,19 @@ function drawBackground() {
     }
   };
   const mode = th.deco === 'snow' ? 'mount' : th.deco === 'towers' ? 'tower' : 'hill';
-  layer(0.2, th.far, 18, 170, L.n * 3 + 1, mode);
-  layer(0.45, th.near, 14, 205, L.n * 5 + 2, th.deco === 'towers' ? 'tower' : 'hill');
+  layer(0.2, th.far, 18, VH * 0.63, L.n * 3 + 1, mode);
+  layer(0.45, th.near, 14, VH * 0.76, L.n * 5 + 2, th.deco === 'towers' ? 'tower' : 'hill');
   if (th.deco === 'crystals' || L.n === 1) { ctx.fillStyle = th.near; for (let sx = 0; sx < VW; sx += 2) { const wx = sx + cam.x * 0.45; const h = 20 + Math.abs(Math.sin(wx * 0.05)) * 30 * (Math.sin(wx * 0.013) > 0 ? 1 : 0.3); ctx.fillRect(sx, 0, 2, h); } }
   if (th.deco === 'fog') { ctx.fillStyle = 'rgba(180,220,140,0.12)'; for (let i = 0; i < 4; i++) ctx.fillRect(0, 150 + i * 22 + Math.sin(tm * 0.01 + i) * 6, VW, 10); }
 }
 function drawTiles() {
   const x0 = Math.floor(cam.x / T), x1 = Math.ceil((cam.x + VW) / T), y0 = Math.floor(cam.y / T), y1 = Math.ceil((cam.y + VH) / T);
   const th = L.th;
-  for (let ty = y0; ty <= y1 && ty < ROWS; ty++) for (let tx = x0; tx <= x1; tx++) {
-    const t = tileAt(tx, ty); if (!t) continue;
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const t = ty < ROWS ? tileAt(tx, ty) : (tileAt(tx, ROWS - 1) === 1 ? 1 : 0); if (!t) continue;
     const dx = tx * T - Math.round(cam.x), dy = ty * T - Math.round(cam.y);
     switch (t) {
-      case 1: { const above = ty > 0 ? tileAt(tx, ty - 1) : 0; const img = isSolidT(above) && above !== 7 && above !== 6 ? TEX.fill[(tx * 7 + ty * 3) % 3] : TEX.top[(tx + ty) % 2]; ctx.drawImage(img, dx, dy); break; }
+      case 1: { const above = ty > ROWS ? 1 : ty > 0 ? tileAt(tx, ty - 1) : 0; const img = isSolidT(above) && above !== 7 && above !== 6 ? TEX.fill[(tx * 7 + ty * 3) % 3] : TEX.top[(tx + ty) % 2]; ctx.drawImage(img, dx, dy); break; }
       case 2: ctx.drawImage(TEX.plat, dx, dy); break;
       case 3: ctx.drawImage(TEX.spike, dx, dy); break;
       case 4: { const c = L.crumbles.get(ty * L.w + tx); const sh = c && c.state === 'shake' ? ((frame >> 1) % 2 ? 1 : -1) : 0; ctx.drawImage(TEX.crumble, dx + sh, dy); break; }
@@ -1471,7 +1489,7 @@ function titleScreen() {
       </div>
     </div>`, 'title-bg');
   drawHero($('heroCv'));
-  $('bPlay').onclick = () => mapScreen();
+  $('bPlay').onclick = () => { goFullscreen(); mapScreen(); };
   $('bShop').onclick = () => shopScreen(() => titleScreen());
   $('bMedals').onclick = () => medalsScreen();
   $('bHelp').onclick = () => helpScreen();
@@ -1679,6 +1697,7 @@ function endingScreen() {
 
 /* ---------------- level flow ---------------- */
 function startLevel(n) {
+  goFullscreen();
   L = buildLevel(n);
   buildTiles(L.th, n * 31 + 7);
   makeSlime(SLIME_COLORS[n]);
@@ -1724,12 +1743,20 @@ function loop(now) {
 /* ---------------- resize ---------------- */
 function fit() {
   const wrap = $('wrap');
-  const s = Math.min(innerWidth / VW, innerHeight / VH);
-  const scale = s >= 2 ? Math.floor(s) : s;
+  const W = innerWidth, H = innerHeight;
+  if (IS_TOUCH) {
+    // show more of the world instead of black bars on wide phones
+    const nh = 216, nv = clamp(Math.round(nh * Math.max(W, H) / Math.min(W, H) / 2) * 2, 384, 560);
+    if (nv !== VW || nh !== VH) { VW = nv; VH = nh; cv.width = VW; cv.height = VH; ctx.imageSmoothingEnabled = false; }
+  }
+  const s = Math.min(W / VW, H / VH);
+  const scale = !IS_TOUCH && s >= 2 ? Math.floor(s) : s;
   wrap.style.width = VW * scale + 'px'; wrap.style.height = VH * scale + 'px';
   wrap.style.setProperty('--s', scale);
+  if (L && state === 'play') updateCamera(true);
 }
 addEventListener('resize', fit);
+addEventListener('orientationchange', () => setTimeout(fit, 200));
 
 /* ---------------- boot ---------------- */
 buildEnemySprites();

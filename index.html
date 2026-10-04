@@ -2,7 +2,14 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d0a14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="דן נגד המפלצות">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>דן נגד המפלצות</title>
 <meta name="description" content="משחק פלטפורמה בפיקסל ארט: דן מרביץ לכל המפלצות. כי בא לו.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='4' y='1' width='8' height='4' fill='%235a3a1e'/%3E%3Crect x='4' y='4' width='8' height='4' fill='%23f2c49a'/%3E%3Crect x='9' y='5' width='1' height='1' fill='%23000'/%3E%3Crect x='3' y='8' width='10' height='4' fill='%23e04848'/%3E%3Crect x='5' y='12' width='6' height='3' fill='%233a4a8a'/%3E%3C/svg%3E">
@@ -15,7 +22,9 @@
     --accent: #ffcc33; --accent2: #e04848; --good: #5ccf4a;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, sans-serif; overflow: hidden; -webkit-user-select: none; user-select: none; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, sans-serif; overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  body.touch.playing { touch-action: none; }
+  canvas { -webkit-touch-callout: none; touch-action: none; }
   body { display: flex; align-items: center; justify-content: center; }
   #wrap { position: relative; --s: 2; }
   #c { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; background: #000; }
@@ -138,19 +147,51 @@
   @media (max-width: 640px) { .upg-grid { grid-template-columns: 1fr; } .hero-card { position: static; } }
 
   /* touch controls */
-  #touch { position: fixed; inset: auto 0 0 0; height: 0; display: none; z-index: 20; direction: ltr; }
+  #touch { position: fixed; inset: 0; display: none; z-index: 20; direction: ltr; pointer-events: none; }
   #touch.on { display: block; }
   body:not(.playing) #touch { display: none; }
-  .tbtn { position: fixed; width: 64px; height: 64px; border-radius: 50%; background: #ffffff22; border: 3px solid #ffffff55; color: #fff; font: 900 20px 'Rubik'; display: grid; place-items: center; touch-action: none; }
-  .tbtn.down { background: #ffcc3366; }
-  .tl { left: 16px; bottom: 24px; } .tr { left: 92px; bottom: 24px; } .td { left: 54px; bottom: 94px; width: 52px; height: 52px; }
-  .tj { right: 16px; bottom: 24px; width: 76px; height: 76px; } .ta { right: 102px; bottom: 34px; } .tdash { right: 40px; bottom: 112px; width: 52px; height: 52px; font-size: 14px; }
-  .tpot { right: 112px; bottom: 112px; width: 46px; height: 46px; font-size: 14px; } .tpause { right: 12px; top: 12px; width: 40px; height: 40px; font-size: 14px; }
+  .tbtn { position: fixed; pointer-events: auto; border-radius: 50%; background: #0000002e; border: 3px solid #ffffff59; color: #ffffffd0; font: 900 22px 'Rubik'; display: grid; place-items: center; touch-action: none; -webkit-user-select: none; user-select: none; text-shadow: 0 2px 0 #0008; }
+  .tbtn.down { background: #ffcc3355; border-color: #ffcc33; transform: scale(.94); }
+  /* sizes are relative to the short side so they fit every phone */
+  .tl, .tr { width: 17vmin; height: 17vmin; bottom: 5vmin; }
+  .tl { left: max(4vmin, env(safe-area-inset-left)); } .tr { left: calc(max(4vmin, env(safe-area-inset-left)) + 19vmin); }
+  .td { width: 13vmin; height: 13vmin; bottom: 24vmin; left: calc(max(4vmin, env(safe-area-inset-left)) + 11vmin); font-size: 18px; }
+  .tj { width: 21vmin; height: 21vmin; right: max(4vmin, env(safe-area-inset-right)); bottom: 5vmin; font-size: 30px; }
+  .ta { width: 17vmin; height: 17vmin; right: calc(max(4vmin, env(safe-area-inset-right)) + 23vmin); bottom: 4vmin; font-size: 26px; }
+  .tdash { width: 13vmin; height: 13vmin; right: calc(max(4vmin, env(safe-area-inset-right)) + 4vmin); bottom: 28vmin; font-size: 15px; }
+  .tpot { width: 11vmin; height: 11vmin; right: calc(max(4vmin, env(safe-area-inset-right)) + 21vmin); bottom: 24vmin; font-size: 16px; }
+  .tpause { width: 10vmin; height: 10vmin; left: max(3vmin, env(safe-area-inset-left)); top: 3vmin; font-size: 15px; }
+  .tfs { width: 10vmin; height: 10vmin; left: calc(max(3vmin, env(safe-area-inset-left)) + 12vmin); top: 3vmin; font-size: 18px; }
+  body.fs .tfs { display: none; }
+  body.touch #lvlname { display: none; }
+  body.touch .hud-top { left: calc(30px * var(--s)); }
+  #rotate { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 24px; font-weight: 700; font-size: 20px; }
+  #rotate .ph { width: 60px; height: 100px; border: 5px solid var(--accent); border-radius: 10px; animation: rot 1.6s ease-in-out infinite; }
+  @keyframes rot { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+  @media (orientation: portrait) { body.touch.playing #rotate { display: flex; } }
 
   @media (max-width: 640px) {
     .map, .medals { grid-template-columns: repeat(2, 1fr); }
     .shop { grid-template-columns: 1fr; }
     .panel { padding: 14px; }
+  }
+  /* short landscape phones: compact menus */
+  @media (max-height: 520px) {
+    .overlay { padding: 8px; align-items: flex-start; }
+    .panel { padding: 10px 14px; }
+    .title { font-size: 28px; }
+    .sub { margin: 2px 0 6px; font-size: 14px; }
+    .dan-hero canvas { width: 84px; height: 66px; }
+    .col { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .col .btn { flex: 1 1 40%; }
+    .col .btn.big { flex-basis: 100%; }
+    .btn { font-size: 14px; padding: 6px 12px; } .btn.big { font-size: 17px; padding: 8px 14px; }
+    .panel.narrow { max-width: 560px; }
+    .map { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .node { min-height: 86px; padding: 6px 4px; } .node .nm { font-size: 12px; } .node .boss { display: none; }
+    .medals { grid-template-columns: repeat(5, 1fr); }
+    .hero-stage canvas { width: 112px; height: 88px; }
+    form { gap: 6px; } input { padding: 6px 8px; }
   }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -176,12 +217,15 @@
   <div class="tbtn tr" data-k="T_right">▶</div>
   <div class="tbtn td" data-k="T_down">▼</div>
   <div class="tbtn tj" data-k="T_jump">⤒</div>
-  <div class="tbtn ta" data-k="T_attack">👊</div>
+  <div class="tbtn ta" data-k="T_attack">⚔</div>
   <div class="tbtn tdash" data-k="T_dash">דאש</div>
   <div class="tbtn tpot" data-k="T_potion">🧪</div>
   <div class="tbtn tpause" data-k="T_pause">II</div>
+  <button class="tbtn tfs" id="fsBtn" aria-label="מסך מלא">⛶</button>
 </div>
+<div id="rotate"><div class="ph"></div>סובב את הטלפון לרוחב כדי לשחק</div>
 <script src="chunks.js"></script>
 <script src="game.js"></script>
+<script>if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>

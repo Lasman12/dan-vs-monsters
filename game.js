@@ -407,6 +407,7 @@ function setupTouch() {
   };
   for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) tc.addEventListener(ev, sync, { passive: false });
   $('fsBtn').addEventListener('click', () => goFullscreen(true));
+  document.body.classList.toggle('fs', isFullscreen());
   setupJoystick();
 }
 // floating joystick: appears under the thumb anywhere in the left part of the screen
@@ -439,7 +440,8 @@ function setupJoystick() {
   zone.addEventListener('touchmove', e => { e.preventDefault(); e.stopPropagation(); const t = find(e.changedTouches); if (t) move(t.clientX - cx, t.clientY - cy); }, { passive: false });
   for (const ev of ['touchend', 'touchcancel']) zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); if (find(e.changedTouches)) release(); }, { passive: false });
 }
-function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches; }
+const IS_APP = /DanApp/.test(navigator.userAgent);   // running inside the Android app (already fullscreen)
+function isFullscreen() { return IS_APP || !!(document.fullscreenElement || document.webkitFullscreenElement) || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches; }
 function goFullscreen(force) {
   if (!IS_TOUCH && !force) return;
   const el = document.documentElement;
@@ -1484,6 +1486,7 @@ function loginScreen(msg = '') {
       </form>
       <p class="hint">${names.length ? 'שחקנים במחשב הזה: ' + names.map(n => `<b>${esc(n)}</b>`).join(' · ') : 'אין עדיין חשבונות – צור חשבון חדש כדי לשמור את ההישגים שלך.'}</p>
       <p class="hint small">החשבונות וההתקדמות נשמרים בדפדפן הזה.</p>
+      ${appLink()}
     </div>`, 'title-bg');
   let mode = names.length ? 'login' : 'reg';
   const setMode = m => {
@@ -1523,6 +1526,11 @@ function login(name) {
   titleScreen();
 }
 function logout() { account = null; try { sessionStorage.removeItem(CUR_KEY); } catch (e) { } loginScreen(); }
+const APK_URL = 'https://github.com/Lasman12/dan-vs-monsters/releases/latest/download/dan-vs-monsters.apk';
+function appLink() {
+  if (IS_APP || !/Android/i.test(navigator.userAgent)) return '';
+  return `<a class="applink" href="${APK_URL}">📱 הורד את האפליקציה לאנדרואיד</a>`;
+}
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function titleScreen() {
@@ -1541,6 +1549,7 @@ function titleScreen() {
         <button class="btn" id="bHelp">איך משחקים?</button>
         <button class="btn ghost" id="bOut">התנתק</button>
       </div>
+      ${appLink()}
     </div>`, 'title-bg');
   drawHero($('heroCv'));
   $('bPlay').onclick = () => { goFullscreen(); mapScreen(); };

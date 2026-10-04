@@ -118,6 +118,7 @@
   .medal-big .medal { animation: spinIn .8s cubic-bezier(.2,1.6,.4,1); }
   @keyframes spinIn { from { transform: scale(0) rotate(-200deg); } to { transform: scale(1) rotate(0); } }
 
+  .applink { display: inline-block; margin-top: 10px; color: var(--accent); font-weight: 700; text-decoration: none; border: 2px dashed var(--accent); padding: 6px 12px; border-radius: 3px; }
   /* upgrade hub */
   .upg-grid { display: grid; grid-template-columns: 240px 1fr; gap: 14px; text-align: right; }
   .hero-card { background: #120d1a; border: 3px solid #160e1c; box-shadow: 0 0 0 2px var(--line); border-radius: 3px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; position: sticky; top: 0; align-self: start; }
@@ -231,6 +232,6 @@
 <div id="rotate"><div class="ph"></div>סובב את הטלפון לרוחב כדי לשחק</div>
 <script src="chunks.js"></script>
 <script src="game.js"></script>
-<script>if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<script>if ('serviceWorker' in navigator && location.protocol === 'https:' && !/DanApp/.test(navigator.userAgent)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>

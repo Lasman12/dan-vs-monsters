@@ -145,7 +145,7 @@ function bossHP(n) { return n < PER_WORLD ? 260 + n * 190 + Math.max(0, n - 4) *
 function mkBoss(def, x, y, hp) {
   const sz = BOSS_SIZE[def.tpl];
   return { def, w: sz[0], h: sz[1], x, y, vx: 0, vy: 0, hp, max: hp, state: 'intro', t: 90, sub: '', count: 0, face: -1, flash: 0, phase: 1, onGround: false, last: '', alpha: 1, hitBy: null,
-    dmg: Math.round(22 * (1 + 0.15 * L.n)), anim: 0, stun: 0, ghost: false, hidden: false, guard: false, hits: [], shards: null, trail: [], pathT: 0 };
+    dmg: Math.round(22 * (1 + 0.15 * L.n) * (L.n >= PER_WORLD ? 1.1 : 1)), anim: 0, stun: 0, ghost: false, hidden: false, guard: false, hits: [], shards: null, trail: [], pathT: 0 };
 }
 function startBoss() {
   const A = L.arena; A.active = true;
@@ -153,7 +153,7 @@ function startBoss() {
   L.safe = { x: A.left + 24, y: A.floor - P.h };
   const def = BOSSES[L.n];
   const sz = BOSS_SIZE[def.tpl];
-  const hp = Math.round(bossHP(L.n) * (def.hpMul || 1));
+  const hp = Math.round(bossHP(L.n) * (def.hpMul || 1) * (L.n >= PER_WORLD ? 1.15 : 1));
   const b = mkBoss(def, L.bossSpawn.x, def.fly ? A.floor - 120 - sz[1] : L.bossSpawn.y - sz[1], hp);
   if (def.shards) b.shards = [0, 1, 2, 3].map(i => ({ alive: true, a: i * Math.PI / 2, regrow: 0 }));
   L.bosses = [b]; L.bossMax = hp;

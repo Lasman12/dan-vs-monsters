@@ -310,14 +310,22 @@ function buildLevel(n) {
   const pool = CHUNKS.filter(c => c.d <= maxD && (!c.need || has(c.need)));
   const count = n < PER_WORLD ? 9 + Math.floor(n * 1.5) : 14 + (n - PER_WORLD);
   const seq = [START_CHUNK];
-  const ambushAt = new Set();
+  const ambushAt = new Set(), used = {}, recent = [];
+  const genP = n === 0 ? 0.3 : 0.42;
   for (let k = 1; k <= (th.ambush || 0); k++) ambushAt.add(Math.floor(count * k / ((th.ambush || 0) + 1)));
   let last = null;
   for (let i = 0; i < count; i++) {
-    let total = 0;
-    const w = pool.map(c => { const v = c === last ? 0 : (c.need ? 2.6 : c.d === maxD ? 1.4 + Math.min(n, 9) * 0.25 : 1); total += v; return v; });
-    let pick = r() * total, ch = pool[0];
-    for (let k = 0; k < pool.length; k++) { pick -= w[k]; if (pick <= 0) { ch = pool[k]; break; } }
+    let ch;
+    if (r() < genP) ch = generateChunk(r, maxD, gim);   // a fresh, one-of-a-kind chunk
+    else {
+      // hand-made chunk: nothing from the last few picks, and less of what was already used
+      let total = 0;
+      const w = pool.map(c => { if (recent.includes(c.id)) return 0; const v = (c.need ? 2.6 : c.d === maxD ? 1.4 + Math.min(n, 9) * 0.25 : 1) / (1 + (used[c.id] || 0) * 1.5); total += v; return v; });
+      let pick = r() * total; ch = pool.find(c => !recent.includes(c.id)) || pool[0];
+      if (total > 0) for (let k = 0; k < pool.length; k++) { pick -= w[k]; if (pick <= 0) { ch = pool[k]; break; } }
+      used[ch.id] = (used[ch.id] || 0) + 1; recent.push(ch.id); if (recent.length > 5) recent.shift();
+      if (canMirror(ch) && r() < 0.5) ch = mirrorChunk(ch);
+    }
     seq.push(ch); last = ch;
     if (ambushAt.has(i)) seq.push(AMBUSH_CHUNK);
     if (i % 4 === 3 && i < count - 1) seq.push(CHECKPOINT_CHUNK);
@@ -386,7 +394,7 @@ function buildLevel(n) {
     }
     // per-chunk mechanics
     if (ch !== START_CHUNK && ch !== CHECKPOINT_CHUNK && ch !== AMBUSH_CHUNK) {
-      if (has('ice') && r() < 0.7) for (let i = 0; i < cw; i++) for (let y = 1; y < ROWS; y++) if (get(col + i, y) === 1 && get(col + i, y - 1) === 0) set(col + i, y, 10);
+      if (has('ice') && ch.id !== 'gen-hops' && r() < 0.7) for (let i = 0; i < cw; i++) for (let y = 1; y < ROWS; y++) if (get(col + i, y) === 1 && get(col + i, y - 1) === 0) set(col + i, y, 10);
       if (has('geyser')) for (let i = 2; i < cw - 2; i++) for (let y = 4; y < ROWS; y++) {
         const gx = col + i;
         if ((get(gx, y) === 1 || get(gx, y) === 10) && get(gx, y - 1) === 0 && get(gx, y - 2) === 0 && get(gx, y - 3) === 0 && r() < 0.05 && !lv.geysers.some(g => Math.abs(g.x - gx * T) < 6 * T)) lv.geysers.push({ x: gx * T + 8, y: y * T, t: r() * 220 });

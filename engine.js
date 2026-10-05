@@ -1122,7 +1122,8 @@ function spawnWave(a) {
     const x = (a.c0 + 4 + Math.random() * (a.c1 - a.c0 - 8)) * T;
     const e = mkEnemy(k, x, 8 * T, n); e.amb = a; e.t = 40 + Math.random() * 60;
     if ((a.wave === a.waves && i === 0 && n >= 2) || Math.random() < 0.08 + n * 0.01) makeElite(e);
-    if (e.fly) { e.state = e.kind === 'bat' ? 'chase' : 'idle'; e.hy = 9 * T; }
+    // flyers hover just above head height so a jump (or a normal swing) reaches them
+    if (e.fly) { e.state = e.kind === 'bat' ? 'chase' : 'idle'; e.hy = a.floorY - (e.kind === 'cbat' ? 46 : 36); e.y = e.hy; }
     L.enemies.push(e); burst(e.x + 6, e.y + 6, 10, ['#fff', '#ff4a5a'], 2);
   }
 }

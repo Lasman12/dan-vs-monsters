@@ -174,7 +174,7 @@ function heroCard() {
 
 /* ---------------- upgrades ---------------- */
 function upgradesScreen(back, nextLevel) {
-  state = 'shop'; setGameUI(false);
+  enterShop();
   const A = ARMORS[save.armor], W = SWORDS[save.weapon];
   const nA = save.armor + 1 < maxArmor() ? ARMORS[save.armor + 1] : null, nW = SWORDS[save.weapon + 1];
   const atk = ATK_SPEED[save.atkLv], nAtk = ATK_SPEED[save.atkLv + 1], mag = MAGNET[save.magLv], nMag = MAGNET[save.magLv + 1];
@@ -208,6 +208,8 @@ function upgradesScreen(back, nextLevel) {
   $('bBack').onclick = back;
   if (nextLevel != null) $('bNext').onclick = () => startLevel(nextLevel);
 }
+// opened from the pause menu: stay paused under the shop so the level continues afterwards
+function enterShop() { if (state === 'pause' || state === 'pauseShop') { state = 'pauseShop'; return; } state = 'shop'; setGameUI(false); }
 function buy(id) {
   const pay = p => { if (save.coins < p) return false; save.coins -= p; sfx('buy'); return true; };
   let ok = false;
@@ -226,6 +228,7 @@ function buy(id) {
   up(id === 'thunder' && save.weapon === SWORDS.length - 1 && save.thunder < THUNDER.length, (THUNDER[save.thunder] || {}).p, () => save.thunder++);
   up(id === 'sharp' && save.sharp < SHARP.length, (SHARP[save.sharp] || {}).p, () => save.sharp++);
   if (SPECIALS[id] && save.spec[id] < 3) up(true, SPECIALS[id].p[save.spec[id]], () => { save.spec[id]++; if (!save.special) save.special = id; });
+  if (ok && state === 'pauseShop' && L && id === 'hp') P.hp = Math.min(maxHP(), P.hp + HP_STEP);   // new heart is filled right away
   if (ok) persist();
   return ok;
 }
@@ -237,7 +240,7 @@ function equip(id) {
 
 /* ---------------- weaponsmith (world 2) ---------------- */
 function smithScreen(back) {
-  state = 'shop'; setGameUI(false);
+  enterShop();
   const legend = save.weapon === SWORDS.length - 1;
   const bowN = BOWS[save.bowLv], hamN = HAMMERS[save.hammerLv], thN = THUNDER[save.thunder], shN = SHARP[save.sharp];
   const eq = w => save.equip === w ? 'on' : 'off';
@@ -266,7 +269,7 @@ function smithScreen(back) {
 
 /* ---------------- specials (world 2) ---------------- */
 function specialsScreen(back) {
-  state = 'shop'; setGameUI(false);
+  enterShop();
   const cards = Object.keys(SPECIALS).map(k => {
     const S = SPECIALS[k], lv = save.spec[k];
     return card({ id: k, icon: S.icon, title: t(k) + (lv ? ' · ' + t('tier', lv) : ''), sub: specialDesc(k, Math.max(1, lv)) + ' · ' + t('manaCost', S.cost) + (lv && lv < 3 ? ` <span class="arrow">${arrow()}</span> <em>${t('tier', lv + 1)}</em>` : ''), lv, max: 3, price: lv < 3 ? S.p[lv] : null, color: '#b07aff', equip: lv ? (save.special === k ? 'on' : 'off') : null, action: 'max' });
@@ -327,7 +330,7 @@ function settingsScreen(back) {
         <div class="set-block"><small>💾 ${t('saveNote')}</small><button class="btn ghost danger" id="sReset">${t('reset')}</button></div>
       </div>
       <button class="btn ghost" id="bBack">${t('back')}</button>
-    </div>`, state === 'pause' ? '' : 'title-bg');
+    </div>`, state === 'pause' || state === 'pauseShop' ? '' : 'title-bg');
   $('sSound').onclick = () => { setMuted(!muted); initAudio(); sfx('buy'); settingsScreen(back); };
   scr.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { setLang(b.dataset.lang); settingsScreen(back); });
   $('sCopy').onclick = async () => {
@@ -352,6 +355,8 @@ function pauseScreen() {
       <div class="col">
         <button class="btn big" id="bRes">${t('resume')}</button>
         <button class="btn" id="bRestart">${t('restart')}</button>
+        <button class="btn" id="bShopP">⬆️ ${t('upgrades')} <span class="coin">🪙 ${save.coins}</span></button>
+        ${world2() ? `<div class="row tight"><button class="btn" id="bSmithP">⚒️ ${t('smith')}</button><button class="btn" id="bSpecP">✨ ${t('specials')}</button></div>` : ''}
         <button class="btn" id="bMap">${t('exitMap')}</button>
         <button class="btn ghost" id="bSet">⚙️ ${t('settings')}</button>
       </div>
@@ -361,8 +366,16 @@ function pauseScreen() {
   $('bRestart').onclick = () => startLevel(L.n);
   $('bMap').onclick = () => { persist(); mapScreen(); };
   $('bSet').onclick = () => settingsScreen(pauseScreen);
+  const backToPause = () => { state = 'pause'; pauseScreen(); };
+  $('bShopP').onclick = () => upgradesScreen(backToPause);
+  if (world2()) { $('bSmithP').onclick = () => smithScreen(backToPause); $('bSpecP').onclick = () => specialsScreen(backToPause); }
 }
-function resume() { hideScreen(); state = 'play'; setGameUI(true); }
+function resume() {
+  hideScreen(); state = 'play'; setGameUI(true);
+  // apply anything bought in the pause shop
+  P.weap = ownedWeapons().includes(save.equip) ? save.equip : 'sword';
+  P.hp = Math.min(P.hp, maxHP()); hudCache = {}; updateTouchExtras();
+}
 function finishLevel() {
   const n = L.n;
   const tier = L.deaths === 0 ? 3 : L.deaths <= 2 ? 2 : 1;

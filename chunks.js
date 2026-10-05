@@ -5,12 +5,14 @@
 //  L  lever (hit it)    D  door (opens when every lever in the chunk is hit; extends to the top)
 //  C  coin   G  gem   P  potion   F  checkpoint flag
 //  S  slime  O  goblin  B  bat  K  skeleton archer  N  shield knight  E  random enemy
+//  $  treasure chest spot   r / b  red / blue blocks (swap)   s  switch crystal   |  red wall up to the top
+//  < >  conveyor belts   T  cannon   Y  bounce mushroom
 // Rule: first and last column must be ground on the two bottom rows and open above.
 (function (g) {
   const CHUNKS = [
     { id: 'flat', d: 1, rows: [
       '                    ',
-      '      C C C         ',
+      '      C $ C         ',
       '                    ',
       '     -----          ',
       '               C    ',
@@ -30,7 +32,7 @@
     ]},
     { id: 'stairs', d: 1, rows: [
       '                        ',
-      '               CC       ',
+      '               C$       ',
       '             ######     ',
       '          C  ######     ',
       '         ##  ######     ',
@@ -42,7 +44,7 @@
     ]},
     { id: 'spikes', d: 1, rows: [
       '                        ',
-      '            C           ',
+      '            $           ',
       '          -----         ',
       '                        ',
       '      C          C      ',
@@ -53,7 +55,7 @@
     ]},
     { id: 'lever', d: 1, tag: 'lever', rows: [
       '                        ',
-      '           L            ',
+      '          $L            ',
       '         #####          ',
       '                        ',
       '    C                   ',
@@ -104,7 +106,7 @@
     ]},
     { id: 'spring', d: 2, tag: 'spring', rows: [
       '                      ',
-      '            CCC       ',
+      '            C$C       ',
       '          #######     ',
       '          #######     ',
       '          #######     ',
@@ -128,7 +130,7 @@
     ]},
     { id: 'gemclimb', d: 2, rows: [
       '                          ',
-      '        G                 ',
+      '       $G                 ',
       '       ---                ',
       '                          ',
       '                          ',
@@ -155,7 +157,7 @@
     { id: 'plateau', d: 2, rows: [
       '                            ',
       '        C C                 ',
-      '                            ',
+      '         $                  ',
       '       #####     B          ',
       '       #####                ',
       '    ##########        C     ',
@@ -166,7 +168,7 @@
     ]},
     { id: 'fort', d: 2, rows: [
       '                          ',
-      '                 K        ',
+      '                $K        ',
       '               #####      ',
       '         C C   #####      ',
       '        -----  #####      ',
@@ -177,7 +179,7 @@
     ]},
     { id: 'shaft', d: 3, tag: 'wall', rows: [
       '                        ',
-      '              C         ',
+      '              $         ',
       '         ######         ',
       '         #              ',
       '    #    #              ',
@@ -213,7 +215,7 @@
     ]},
     { id: 'lift', d: 3, rows: [
       '                        ',
-      '             CCC        ',
+      '             C$C        ',
       '        V  #######      ',
       '           #######      ',
       '           #######      ',
@@ -228,7 +230,7 @@
     ]},
     { id: 'crumbleclimb', d: 3, tag: 'crumble', rows: [
       '                        ',
-      '               CC       ',
+      '               $C       ',
       '             XXXX       ',
       '                        ',
       '                        ',
@@ -254,7 +256,7 @@
     ]},
     { id: 'twolevers', d: 3, tag: 'lever', rows: [
       '                              ',
-      '   L                     D    ',
+      '  $L                     D    ',
       '  ---                    D    ',
       '            -----        D    ',
       '                         D    ',
@@ -268,7 +270,7 @@
       '                              ',
       '                              ',
       '                              ',
-      '         K                    ',
+      '        $K                    ',
       '       #####           K      ',
       '       #####         -----    ',
       '  ##   #####     ##           ',
@@ -278,7 +280,7 @@
     ]},
     { id: 'wall', d: 3, tag: 'wall', rows: [
       '                        ',
-      '                 CCC    ',
+      '                 C$C    ',
       '            #########   ',
       '            #           ',
       '            #           ',
@@ -300,6 +302,109 @@
       '   E      E        E      E   ',
       '##############################',
       '##############################',
+    ]},
+    // ---------- mechanic chunks: only used in levels whose theme has the matching gimmick ----------
+    { id: 'rhythm', d: 2, need: 'rhythm', tag: 'rhythm', rows: [
+      '                          ',
+      '      C     C     C       ',
+      '                          ',
+      '    rrr   bbb   rrr       ',
+      '                          ',
+      '                          ',
+      '####                  ####',
+      '####                  ####',
+    ]},
+    { id: 'rhythmclimb', d: 2, need: 'rhythm', rows: [
+      '                        ',
+      '              $         ',
+      '            rrrr        ',
+      '                        ',
+      '                        ',
+      '        bbbb            ',
+      '                        ',
+      '                        ',
+      '    rrrr          E     ',
+      '                        ',
+      '                        ',
+      '########################',
+      '########################',
+    ]},
+    { id: 'switch', d: 2, need: 'switch', tag: 'switch', rows: [
+      '                            ',
+      '          s                 ',
+      '       rrrrr      |         ',
+      '                  |         ',
+      '    rr            |         ',
+      '                  |         ',
+      '  rr       bbbbbbb|bbbbb    ',
+      '###########^^^^^^^#^^^^^####',
+      '############################',
+    ]},
+    { id: 'belts', d: 2, need: 'conveyor', tag: 'conveyor', rows: [
+      '                              ',
+      '        C  C  C               ',
+      '                              ',
+      '      >>>>>>>>      <<<<<<    ',
+      '                              ',
+      '   E                 E        ',
+      '##<<<<<<<<<<<##>>>>>>>>>>>####',
+      '##############################',
+    ]},
+    { id: 'beltspikes', d: 2, need: 'conveyor', rows: [
+      '                          ',
+      '          C C C           ',
+      '                          ',
+      '                          ',
+      '       ---       ---      ',
+      '                          ',
+      '                          ',
+      '##>>>>>>>>>^^^^>>>>>>>####',
+      '##########################',
+    ]},
+    { id: 'battery', d: 2, need: 'cannon', tag: 'cannon', rows: [
+      '                            ',
+      '                            ',
+      '   T                    T   ',
+      '  ###     -----       ###   ',
+      '  ###                 ###   ',
+      '          ##    ##          ',
+      '  E       ##    ##     $    ',
+      '############################',
+      '############################',
+    ]},
+    { id: 'cannonrun', d: 2, need: 'cannon', rows: [
+      '                              ',
+      '                              ',
+      '      C   C   C               ',
+      '                          T   ',
+      '     ---     ---         ###  ',
+      '                         ###  ',
+      '   O              ##     ###  ',
+      '##############################',
+      '##############################',
+    ]},
+    { id: 'mushrooms', d: 1, need: 'bounce', tag: 'bounce', rows: [
+      '                          ',
+      '               $          ',
+      '             #####        ',
+      '      C                   ',
+      '                          ',
+      '                          ',
+      '                          ',
+      '   Y      Y               ',
+      '##########################',
+      '##########################',
+    ]},
+    { id: 'mushgap', d: 2, need: 'bounce', rows: [
+      '                          ',
+      '            C  C          ',
+      '                          ',
+      '                          ',
+      '                          ',
+      '                          ',
+      '          Y               ',
+      '#####    ###      ########',
+      '#####    ###      ########',
     ]},
   ];
 

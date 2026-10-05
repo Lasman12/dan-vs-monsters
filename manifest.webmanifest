@@ -1,8 +1,8 @@
 {
-  "name": "דן נגד המפלצות",
-  "short_name": "דן נגד המפלצות",
-  "lang": "he",
-  "dir": "rtl",
+  "name": "Dan vs. The Monsters",
+  "short_name": "Dan vs Monsters",
+  "lang": "en",
+  "dir": "auto",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

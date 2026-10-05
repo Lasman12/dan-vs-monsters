@@ -107,7 +107,8 @@ async function hashPass(user, pass) {
 }
 
 /* ---------------- sound ---------------- */
-let AC = null, muted = false;
+const SETTINGS_KEY = 'dvm_settings_v1';
+let AC = null, muted = !!(store.get(SETTINGS_KEY) || {}).muted;
 function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } if (AC && AC.state === 'suspended') AC.resume(); }
 const SFX = {
   jump: [['square', 300, 600, 0.08, 0.08]],
@@ -374,7 +375,7 @@ addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT')) return;
   initAudio();
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyM' && !e.repeat) { muted = !muted; toast(muted ? 'סאונד כבוי' : 'סאונד פועל'); }
+  if (e.code === 'KeyM' && !e.repeat) { setMuted(!muted); toast(muted ? 'סאונד כבוי' : 'סאונד פועל'); }
   setKey(e.code, true);
 });
 addEventListener('keyup', e => setKey(e.code, false));
@@ -1017,7 +1018,7 @@ function updateEnemies() {
 
 /* ---------------- boss ---------------- */
 let bossSprites = [];
-function bossHP(n) { return 140 + n * 150; }
+function bossHP(n) { return 260 + n * 190 + Math.max(0, n - 4) ** 2 * 60; }
 function startBoss() {
   const a = L.arena; a.active = true;
   for (let y = 0; y < ROWS - 2; y++) setTile(a.gateX, y, 7);
@@ -1027,7 +1028,7 @@ function startBoss() {
   const hp = bossHP(L.n);
   L.boss = {
     def, w: sz[0], h: sz[1], x: L.bossSpawn.x, y: flying ? a.floor - 120 - sz[1] : L.bossSpawn.y - sz[1], vx: 0, vy: 0, hp, max: hp,
-    state: 'intro', t: 90, face: -1, flash: 0, phase2: false, onGround: false, last: '', alpha: 1, hitBy: -1, count: 0, dmg: Math.round(18 * (1 + 0.14 * L.n)), anim: 0, stun: 0,
+    state: 'intro', t: 90, face: -1, flash: 0, phase2: false, onGround: false, last: '', alpha: 1, hitBy: -1, count: 0, dmg: Math.round(22 * (1 + 0.15 * L.n)), anim: 0, stun: 0, phase3: false,
   };
   sfx('boss'); cam.shake = 10;
   showBossBar(def.name);
@@ -1042,6 +1043,7 @@ function damageBoss(dmg) {
   floatText(b.x + b.w / 2, b.y - 4, (b.stun > 0 ? '×2 ' : '') + d, b.stun > 0 ? '#ffd54a' : '#fff');
   sfx('hit'); burst(P.x + P.w / 2 + P.face * 14, P.y + 6, 6, ['#fff', b.def.c1], 2.5);
   if (!b.phase2 && b.hp <= b.max / 2) { b.phase2 = true; toast('!' + b.def.name + ' התעצבן', 2000); cam.shake = 12; sfx('boss'); }
+  if (!b.phase3 && b.hp <= b.max / 4) { b.phase3 = true; toast('!!' + b.def.name + ' בזעם', 2000); cam.shake = 16; sfx('boss'); }
   if (b.hp <= 0) { b.hp = 0; b.state = 'dying'; b.t = 150; b.vx = 0; L.projectiles = []; L.warnings = []; L.enemies.forEach(e => { if (e.minion) { e.dead = true; burst(e.x, e.y, 6, ['#fff'], 2); } }); sfx('kill'); }
 }
 function bossShoot(b, n, spread, speed) {
@@ -1055,7 +1057,7 @@ function bossShoot(b, n, spread, speed) {
 }
 function shockwaves(b) {
   const y = L.arena.floor - 12;
-  for (const d of [-1, 1]) L.projectiles.push({ kind: 'wave', col: b.def.c1, x: b.x + b.w / 2 - 6, y, w: 12, h: 12, vx: d * (b.phase2 ? 3.6 : 3), vy: 0, dmg: b.dmg, life: 200, parry: false, ground: true });
+  for (const d of [-1, 1]) L.projectiles.push({ kind: 'wave', col: b.def.c1, x: b.x + b.w / 2 - 6, y, w: 12, h: 12, vx: d * (b.phase2 ? 3.8 : 3.2), vy: 0, dmg: b.dmg, life: 200, parry: false, ground: true });
   sfx('slam'); cam.shake = 10;
 }
 function updateBoss() {
@@ -1063,7 +1065,10 @@ function updateBoss() {
   const A = L.arena, def = b.def, fly = !!def.fly;
   b.anim++; if (b.flash > 0) b.flash--; if (b.stun > 0) b.stun--;
   const pcx = P.x + P.w / 2, bcx = b.x + b.w / 2, dx = pcx - bcx;
-  const sp = b.phase2 ? 1.35 : 1;
+  // pace grows with the world number and with each phase; in later phases moves chain into each other
+  const sp = (1 + L.n * 0.05) * (b.phase2 ? 1.3 : 1) * (b.phase3 ? 1.2 : 1);
+  const wait = v => (b.phase2 && Math.random() < (b.phase3 ? 0.5 : 0.3)) ? 6 : v * 0.7 / sp;
+  if (b.phase3 && b.anim % 5 === 0) L.particles.push({ x: b.x + Math.random() * b.w, y: b.y + b.h, vx: 0, vy: -1 - Math.random(), life: 30, max: 30, col: '#ff3a2a', s: 2, g: -0.02 });
   const hoverY = A.floor - 120 - b.h;
   const pick = () => {
     let opts = def.moves.filter(m => m !== b.last); if (!opts.length) opts = def.moves;
@@ -1089,7 +1094,7 @@ function updateBoss() {
       if (b.onGround) {
         b.vx = 0;
         if (b.t-- <= 0) {
-          if (b.count-- <= 0) { b.state = 'idle'; b.t = 50 / sp; break; }
+          if (b.count-- <= 0) { b.state = 'idle'; b.t = wait(50); break; }
           b.vy = -8.5; b.vx = clamp(dx / 45, -3.2, 3.2) * sp; b.t = 14; b.onGround = false;
         }
       }
@@ -1097,7 +1102,7 @@ function updateBoss() {
     case 'charge':
       if (b.sub === 'wind') { b.vx = 0; if (--b.t <= 0) { b.sub = 'run'; } }
       else if (b.sub === 'run') {
-        b.vx = b.face * 4.6 * sp;
+        b.vx = b.face * 5 * sp;
         if (b.anim % 3 === 0) L.particles.push(dust(bcx, b.y + b.h));
       }
       break;
@@ -1108,26 +1113,26 @@ function updateBoss() {
       b.face = sign(dx) || b.face; b.vx *= 0.8;
       if (fly) b.y += (hoverY - b.y) * 0.05;
       if (--b.t <= 0) {
-        if (b.count-- <= 0) { b.state = 'idle'; b.t = 50 / sp; break; }
-        bossShoot(b, b.phase2 ? 5 : 3, 0.28, 2.6 * sp); b.t = 32 / sp;
+        if (b.count-- <= 0) { b.state = 'idle'; b.t = wait(50); break; }
+        bossShoot(b, 3 + Math.floor(L.n / 3) + (b.phase2 ? 2 : 0), 0.26, 2.6 * sp); b.t = wait(32);
       }
       break;
     case 'rain':
       b.vx *= 0.8; b.t++;
-      if (b.t === 1) { const n = b.phase2 ? 11 : 7; for (let i = 0; i < n; i++) L.warnings.push({ x: A.left + 8 + Math.random() * (A.right - A.left - 24), t: 50 + i * 6, col: def.c1 }); }
-      if (b.t > 120) { b.state = 'idle'; b.t = 45 / sp; }
+      if (b.t === 1) { const n = 8 + L.n + (b.phase2 ? 4 : 0); for (let i = 0; i < n; i++) L.warnings.push({ x: A.left + 8 + Math.random() * (A.right - A.left - 24), t: 50 + i * 6, col: def.c1 }); }
+      if (b.t > 120) { b.state = 'idle'; b.t = wait(45); }
       break;
     case 'summon':
       b.vx *= 0.8;
       if (--b.t <= 0) {
         const pool = enemyPool(L.n).filter(k => !'NKUR'.includes(k)); if (!pool.length) pool.push('S');
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < (b.phase2 ? 3 : 2); i++) {
           const k = pool[(Math.random() * pool.length) | 0];
           const e = mkEnemy(k, bcx - 8 + (i ? 30 : -30), A.floor - T - (k === 'B' ? 40 : 0), L.n); e.minion = true; e.coins = 1; e.state = k === 'B' ? 'chase' : 'idle'; e.t = 9999;
           e.x = clamp(e.x, A.left + 4, A.right - 20);
           L.enemies.push(e); burst(e.x + 6, e.y + 6, 10, ['#fff', def.c1], 2);
         }
-        b.state = 'idle'; b.t = 60 / sp;
+        b.state = 'idle'; b.t = wait(60);
       }
       break;
     case 'teleport':
@@ -1141,7 +1146,7 @@ function updateBoss() {
       if (b.sub === 'aim') { b.vx *= 0.9; b.face = sign(dx) || b.face; if (--b.t <= 0) { const a = Math.atan2(P.y - b.y, pcx - bcx); b.vx = Math.cos(a) * 5 * sp; b.vy = Math.sin(a) * 5 * sp; b.sub = 'dive'; b.t = 60; } }
       else if (b.sub === 'dive') { if (--b.t <= 0 || b.y + b.h >= A.floor - 2) { b.sub = 'rest'; b.t = 70; b.vx = b.vy = 0; cam.shake = 6; sfx('slam'); } }
       else if (b.sub === 'rest') { b.vx = 0; b.vy = 0; if (b.y + b.h < A.floor) b.vy = 3; if (--b.t <= 0) b.sub = 'up'; }
-      else { b.vx *= 0.9; b.vy = -2.5; if (b.y <= hoverY) { b.vy = 0; b.state = 'idle'; b.t = 50 / sp; } }
+      else { b.vx *= 0.9; b.vy = -2.5; if (b.y <= hoverY) { b.vy = 0; b.state = 'idle'; b.t = wait(50); } }
       break;
     case 'stunned':
       b.vx = 0; if (--b.t <= 0) { b.state = 'idle'; b.t = 30; }
@@ -1167,8 +1172,8 @@ function updateBoss() {
     if (hy === 1) {
       b.vy = 0; b.onGround = true;
       if (wasAir) {
-        if (b.state === 'slam') { shockwaves(b); b.state = 'idle'; b.t = 55 / sp; }
-        else if (b.state === 'hop') { cam.shake = 5; sfx('slam'); if (b.phase2) shockwaves(b); }
+        if (b.state === 'slam') { shockwaves(b); b.state = 'idle'; b.t = wait(55); }
+        else if (b.state === 'hop') { cam.shake = 5; sfx('slam'); if (b.phase2 || L.n >= 2) shockwaves(b); }
       }
     } else if (hy === -1) b.vy = 0; else b.onGround = false;
   } else {
@@ -1526,6 +1531,36 @@ function login(name) {
   titleScreen();
 }
 function logout() { account = null; try { sessionStorage.removeItem(CUR_KEY); } catch (e) { } loginScreen(); }
+const SITE_URL = 'https://lasman12.github.io/dan-vs-monsters/';
+function setMuted(v) { muted = v; store.set(SETTINGS_KEY, Object.assign(store.get(SETTINGS_KEY) || {}, { muted: v })); }
+function settingsScreen(back) {
+  show(`
+    <div class="panel narrow">
+      <h2>⚙️ הגדרות</h2>
+      <div class="settings">
+        <div class="set-row"><span>🔊 סאונד</span><button class="btn toggle ${muted ? 'off' : ''}" id="sSound">${muted ? 'כבוי' : 'פועל'}</button></div>
+        <div class="set-block">
+          <b>📱 הורדת המשחק לטלפון (אנדרואיד)</b>
+          <a class="btn big dl" href="${APK_URL}" ${IS_APP ? 'target="_blank"' : ''}>⬇ הורד את האפליקציה</a>
+          <small>פותחים את הקובץ שירד, מאשרים "התקנה ממקור לא מוכר" ומתקינים. ההתקדמות באפליקציה נפרדת מהאתר.</small>
+        </div>
+        <div class="set-block">
+          <b>🌐 קישור למשחק</b>
+          <div class="linkrow"><input id="sLink" readonly value="${SITE_URL}" dir="ltr"><button class="btn" id="sCopy">${navigator.share ? 'שתף' : 'העתק'}</button></div>
+          <small>שלחו לחברים כדי שגם הם ישחקו ויפתחו חשבון.</small>
+        </div>
+      </div>
+      <button class="btn ghost" id="bBack">חזרה</button>
+    </div>`, state === 'pause' ? '' : 'title-bg');
+  $('sSound').onclick = () => { setMuted(!muted); initAudio(); sfx('buy'); settingsScreen(back); };
+  $('sCopy').onclick = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: 'דן נגד המפלצות', url: SITE_URL });
+      else { await navigator.clipboard.writeText(SITE_URL); toast('הקישור הועתק!'); }
+    } catch (e) { $('sLink').select(); }
+  };
+  $('bBack').onclick = back;
+}
 const APK_URL = 'https://github.com/Lasman12/dan-vs-monsters/releases/latest/download/dan-vs-monsters.apk';
 function appLink() {
   if (IS_APP || !/Android/i.test(navigator.userAgent)) return '';
@@ -1547,6 +1582,7 @@ function titleScreen() {
         <button class="btn" id="bShop">🏠 בית השדרוגים</button>
         <button class="btn" id="bMedals">המדליות שלי 🏅</button>
         <button class="btn" id="bHelp">איך משחקים?</button>
+        <button class="btn" id="bSettings">⚙️ הגדרות</button>
         <button class="btn ghost" id="bOut">התנתק</button>
       </div>
       ${appLink()}
@@ -1556,6 +1592,7 @@ function titleScreen() {
   $('bShop').onclick = () => shopScreen(() => titleScreen());
   $('bMedals').onclick = () => medalsScreen();
   $('bHelp').onclick = () => helpScreen();
+  $('bSettings').onclick = () => settingsScreen(() => titleScreen());
   $('bOut').onclick = () => logout();
 }
 function drawHero(c) {
@@ -1725,12 +1762,14 @@ function pauseScreen() {
         <button class="btn big" id="bRes">המשך</button>
         <button class="btn" id="bRestart">התחל שלב מחדש</button>
         <button class="btn" id="bMap">יציאה למפה</button>
+        <button class="btn ghost" id="bSet">⚙️ הגדרות</button>
       </div>
       <p class="hint small">המטבעות שאספת כבר נשמרו.</p>
     </div>`);
   $('bRes').onclick = resume;
   $('bRestart').onclick = () => startLevel(L.n);
   $('bMap').onclick = () => { persist(); mapScreen(); };
+  $('bSet').onclick = () => settingsScreen(pauseScreen);
 }
 function resume() { hideScreen(); state = 'play'; setGameUI(true); }
 function finishLevel() {

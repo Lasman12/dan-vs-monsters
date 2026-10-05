@@ -466,7 +466,7 @@ function updateBoss(b) {
       b.dead = true;
       burst(bcx, b.y + b.h / 2, 50, ['#fff', def.c1, def.c2, '#ffd54a'], 4); sfx('kill'); cam.shake = 16;
       if (!L.bosses.some(o => o !== b && !o.dead && !o.clone && o.state !== 'dying') && !L.bosses.some(o => o !== b && !o.dead && !o.clone)) {
-        dropCoins(bcx, b.y + b.h / 2, 25 + L.n * 6);
+        dropCoins(bcx, b.y + b.h / 2, 20 + L.n * 4);
         A.done = true; for (let y = 0; y < ROWS - 2; y++) if (tileAt(A.gateX, y) === 7) setTile(A.gateX, y, 0);
         hideBossBar(); save.bosses++; L.finishT = 170; clearBossHazards(); A.shrink = null;
       }

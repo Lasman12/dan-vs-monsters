@@ -524,11 +524,11 @@ function mkEnemy(type, px, py, n) {
   const hp = Math.round(d.hp * (1 + 0.28 * n));
   return {
     type, kind: d.kind, w: d.w, h: d.h, x: px + (T - d.w) / 2, y: py + T - d.h, hx: px, hy: py,
-    vx: 0, vy: 0, hp, max: hp, dmg: Math.round(d.dmg * (1 + 0.12 * n)), coins: d.coins + Math.floor(n / 2), fly: !!d.fly, spiky: !!d.spiky, heavy: !!d.heavy, alpha: 1, puff: 0,
+    vx: 0, vy: 0, hp, max: hp, dmg: Math.round(d.dmg * 1.3 * (1 + 0.13 * n)), coins: d.coins + Math.floor(n / 5), fly: !!d.fly, spiky: !!d.spiky, heavy: !!d.heavy, alpha: 1, puff: 0,
     dir: Math.random() < 0.5 ? -1 : 1, face: -1, t: 30 + Math.random() * 60, t2: 60 + Math.random() * 80, state: 'idle', flash: 0, kb: 0, onGround: false, anim: Math.random() * 100, turnT: 0, hitBy: -1,
   };
 }
-function makeElite(e) { e.elite = true; e.hp = e.max = Math.round(e.max * 2.2); e.dmg = Math.round(e.dmg * 1.3); e.coins = e.coins * 3 + 5; }
+function makeElite(e) { e.elite = true; e.hp = e.max = Math.round(e.max * 2.2); e.dmg = Math.round(e.dmg * 1.3); e.coins = e.coins * 2 + 2; }
 
 /* ---------------- player ---------------- */
 const P = { x: 0, y: 0, w: 10, h: 14, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, airJumps: 0, wallDir: 0, wallLock: 0, dashT: 0, dashCD: 0, atkT: 0, atkCD: 0, abuf: 0, atkDown: false,
@@ -835,7 +835,7 @@ function flipToggle() {
 function hitSwitch(s) { s.cd = 20; flipToggle(); burst(s.x + 5, s.y + 5, 10, [L.toggle ? '#4a8aff' : '#ff4a5a', '#fff'], 2); cam.shake = 3; }
 function openChest(c) {
   c.open = true; sfx('chest');
-  const n = c.old ? 3 : 14 + L.n * 3;
+  const n = c.old ? 3 : Math.round(8 + L.n * 1.5);
   dropCoins(c.x + c.w / 2, c.y, n);
   if (!c.old) { dropCoins(c.x + c.w / 2, c.y, 0); L.pickups.push(mkPickup('gem', c.x + 4, c.y - 6, 0, -3, true)); save.chests[L.n] |= (1 << c.idx); L.chestsGot++; persist(); }
   toast(c.old ? t('chestOld') : t('chest', n + 15), 1800);
@@ -1120,7 +1120,7 @@ function spawnWave(a) {
   for (let i = 0; i < count; i++) {
     const k = pool[(Math.random() * pool.length) | 0];
     const x = (a.c0 + 4 + Math.random() * (a.c1 - a.c0 - 8)) * T;
-    const e = mkEnemy(k, x, 8 * T, n); e.amb = a; e.t = 40 + Math.random() * 60;
+    const e = mkEnemy(k, x, 8 * T, n); e.amb = a; e.t = 40 + Math.random() * 60; e.coins = Math.ceil(e.coins / 2);
     if ((a.wave === a.waves && i === 0 && n >= 2) || Math.random() < 0.08 + n * 0.01) makeElite(e);
     // flyers hover just above head height so a jump (or a normal swing) reaches them
     if (e.fly) { e.state = e.kind === 'bat' ? 'chase' : 'idle'; e.hy = a.floorY - (e.kind === 'cbat' ? 46 : 36); e.y = e.hy; }

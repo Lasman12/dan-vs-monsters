@@ -5,7 +5,7 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.1.2';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.1.3';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */

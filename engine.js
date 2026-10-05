@@ -242,7 +242,7 @@ function setupTouch() {
     if (e.target.closest && e.target.closest('#fsBtn')) return;
     e.preventDefault(); initAudio();
     const now = new Set(), vmin = Math.min(innerWidth, innerHeight) / 100;
-    const centers = btns.filter(bt => bt.offsetParent !== null).map(bt => { const r = bt.getBoundingClientRect(); return { k: bt.dataset.k, x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, exact: bt.classList.contains('tpause') }; });
+    const centers = btns.filter(bt => bt.getClientRects().length > 0).map(bt => { const r = bt.getBoundingClientRect(); return { k: bt.dataset.k, x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, exact: bt.classList.contains('tpause') }; });
     for (const tt of e.touches) {
       if (tt.identifier === joyId) continue;
       let best = null, bestD = Infinity;

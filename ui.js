@@ -56,6 +56,7 @@ function uiFrame() {
 /* ---------------- home ---------------- */
 function homeScreen() {
   state = 'home'; setGameUI(false);
+  if (newBuild && !IS_APP) { let tried = null; try { tried = sessionStorage.getItem('dvm_reload_for'); } catch (e) { } if (tried !== newBuild) return reloadForUpdate(newBuild); }
   const medals = save.medals.filter(m => m > 0).length, w2 = world2();
   const ni = nextLevelIdx(), th = THEMES[ni];
   const eqW = ownedWeapons().includes(save.equip) ? save.equip : 'sword';
@@ -72,6 +73,7 @@ function homeScreen() {
           <button class="iconbtn" id="hSettings" aria-label="${t('settings')}">⚙️</button>
         </div>
       </div>
+      ${IS_APP && newBuild ? `<a class="update-banner" href="${APK_URL}" target="_blank" rel="noopener">🆕 ${esc(t('updateAvail', newBuild))} <b>${t('updateBtn')}</b></a>` : ''}
       <div class="home-mid">
         <div class="home-left">
           ${cat('hUp', '⬆️', t('upgrades'), false)}
@@ -409,6 +411,27 @@ function endingScreen(world) {
   $('bBack').onclick = homeScreen;
 }
 
+/* ---------------- updates ---------------- */
+// Phones keep tabs open for days and cache aggressively, so ask the server which build is current.
+let newBuild = null;
+async function checkUpdate() {
+  try {
+    const r = await fetch((IS_APP ? SITE_URL : '') + 'version.json?t=' + Date.now(), { cache: 'no-store' });
+    const v = (await r.json()).v;
+    if (!v || v === BUILD) return;
+    newBuild = v;
+    if (IS_APP) { if (state === 'home') homeScreen(); return; }
+    let tried = null; try { tried = sessionStorage.getItem('dvm_reload_for'); } catch (e) { }
+    if (tried === v) return;   // already reloaded once for this build; don't loop
+    if (state === 'home' || state === 'map' || state === 'shop' || state === 'medal') reloadForUpdate(v);
+  } catch (e) { }
+}
+function reloadForUpdate(v) {
+  try { sessionStorage.setItem('dvm_reload_for', v); } catch (e) { }
+  persist();
+  location.replace(location.pathname + '?v=' + v);   // a new URL can't come from the old cache
+}
+
 /* ---------------- boot ---------------- */
 applyLang();
 buildSprites();
@@ -416,4 +439,5 @@ fit(); setupTouch();
 homeScreen();
 requestAnimationFrame(loop);
 addEventListener('beforeunload', persist);
-document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseScreen(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseScreen(); if (!document.hidden) checkUpdate(); });
+checkUpdate();

@@ -539,9 +539,9 @@ function buildLevel(n) {
   const a0 = col;
   for (let x = 0; x < ARENA_W; x++) { set(a0 + x, ROWS - 1, 1); set(a0 + x, ROWS - 2, 1); }
   for (let y = 0; y < ROWS; y++) set(a0 + ARENA_W - 1, y, 1);
-  for (let x = 8; x <= 12; x++) set(a0 + x, 14, 2);
-  for (let x = 21; x <= 25; x++) set(a0 + x, 14, 2);
-  for (let x = 14; x <= 18; x++) set(a0 + x, 10, 2);
+  for (let x = 8; x <= 12; x++) set(a0 + x, 15, 2);
+  for (let x = 21; x <= 25; x++) set(a0 + x, 15, 2);
+  for (let x = 14; x <= 18; x++) set(a0 + x, 12, 2);
   lv.arena = { gateX: a0 + 3, left: (a0 + 4) * T, right: (a0 + ARENA_W - 1) * T, trigger: (a0 + 6) * T, camX: (a0 + 3) * T + 8, top: 2 * T, floor: (ROWS - 2) * T, active: false, done: false };
   lv.bossSpawn = { x: (a0 + 26) * T, y: (ROWS - 2) * T };
   lv.spawn = { x: 3 * T, y: (ROWS - 3) * T };
@@ -1138,9 +1138,12 @@ function updateBoss() {
     case 'teleport':
       b.vx = 0;
       if (b.sub === 'out') { b.alpha = b.t / 30; if (--b.t <= 0) {
-        b.x = (pcx < (A.left + A.right) / 2) ? A.right - b.w - 24 : A.left + 24;
+        // reappear a few steps from Dan (not across the whole arena), on whichever side has room
+        let side = Math.random() < 0.5 ? -1 : 1, dist = 70 + Math.random() * 60;
+        if (pcx + side * dist < A.left + 24 || pcx + side * dist > A.right - 24) side = -side;
+        b.x = clamp(pcx + side * dist - b.w / 2, A.left + 8, A.right - b.w - 8);
         if (!fly) b.y = A.floor - b.h; b.sub = 'in'; b.t = 30; } }
-      else { b.alpha = 1 - b.t / 30; if (--b.t <= 0) { b.alpha = 1; b.state = 'shoot'; b.count = 1; b.t = 10; b.face = sign(dx) || b.face; } }
+      else { b.alpha = 1 - b.t / 30; if (--b.t <= 0) { b.alpha = 1; b.state = 'shoot'; b.count = 1; b.t = 40; b.face = sign(dx) || b.face; } }
       break;
     case 'swoop':
       if (b.sub === 'aim') { b.vx *= 0.9; b.face = sign(dx) || b.face; if (--b.t <= 0) { const a = Math.atan2(P.y - b.y, pcx - bcx); b.vx = Math.cos(a) * 5 * sp; b.vy = Math.sin(a) * 5 * sp; b.sub = 'dive'; b.t = 60; } }

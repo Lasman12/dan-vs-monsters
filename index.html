@@ -243,6 +243,8 @@
   }
 
   .row.tight { margin-top: 0; gap: 8px; } .row.tight .btn { flex: 1; }
+  .account label { text-align: start; }
+  .account .acc-row { font-weight: 700; }
   /* skins */
   .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .skin-card { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #120d1a; border: 3px solid #160e1c; box-shadow: 0 0 0 2px var(--line); border-radius: 6px; padding: 10px 6px; }
@@ -374,15 +376,16 @@
   <button class="tbtn tfs" id="fsBtn" aria-label="fullscreen">⛶</button>
 </div>
 <div id="rotate"><div class="ph"></div>↻</div>
-<script src="data.js?v=2.4.0"></script>
-<script src="i18n.js?v=2.4.0"></script>
-<script src="levelgen.js?v=2.4.0"></script>
-<script src="chunks.js?v=2.4.0"></script>
-<script src="audio.js?v=2.4.0"></script>
-<script src="engine.js?v=2.4.0"></script>
-<script src="bosses.js?v=2.4.0"></script>
-<script src="preview.js?v=2.4.0"></script>
-<script src="ui.js?v=2.4.0"></script>
-<script>if ('serviceWorker' in navigator && location.protocol === 'https:' && !/DanApp/.test(navigator.userAgent)) navigator.serviceWorker.register('sw.js?v=2.4.0').catch(() => {});</script>
+<script src="data.js?v=2.5.0"></script>
+<script src="i18n.js?v=2.5.0"></script>
+<script src="levelgen.js?v=2.5.0"></script>
+<script src="chunks.js?v=2.5.0"></script>
+<script src="audio.js?v=2.5.0"></script>
+<script src="engine.js?v=2.5.0"></script>
+<script src="cloud.js?v=2.5.0"></script>
+<script src="bosses.js?v=2.5.0"></script>
+<script src="preview.js?v=2.5.0"></script>
+<script src="ui.js?v=2.5.0"></script>
+<script>if ('serviceWorker' in navigator && location.protocol === 'https:' && !/DanApp/.test(navigator.userAgent)) navigator.serviceWorker.register('sw.js?v=2.5.0').catch(() => {});</script>
 </body>
 </html>

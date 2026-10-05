@@ -398,6 +398,17 @@ function settingsScreen(back) {
           <div class="linkrow"><input id="sLink" readonly value="${SITE_URL}" dir="ltr"><button class="btn" id="sCopy">${navigator.share ? t('share') : t('copy')}</button></div>
           <small>${t('linkHint')}</small>
         </div>
+        ${cloudReady() ? `<div class="set-block account">
+          <b>☁️ ${t('account')}</b>
+          ${cloud ? `<div class="acc-row"><span>👤 ${t('loggedAs', esc(cloud.name))}</span></div>
+            <small>${t('accSynced')}${cloud.lastSync ? ' · ' + new Date(cloud.lastSync).toLocaleTimeString() : ''}</small>
+            <div class="row tight"><button class="btn" id="aSync">🔄 ${t('syncNow')}</button><button class="btn ghost" id="aOut">${t('logout')}</button></div>`
+          : `<small>${t('accIntro')}</small>
+            <label>${t('username')}<input id="aName" maxlength="16" autocomplete="username" dir="ltr"></label>
+            <label>${t('password')}<input id="aPass" type="password" maxlength="40" autocomplete="current-password" dir="ltr"></label>
+            <div class="err" id="aErr"></div>
+            <div class="row tight"><button class="btn" id="aIn">${t('login')}</button><button class="btn ghost" id="aUp">${t('signup')}</button></div>`}
+        </div>` : ''}
         <div class="set-block"><small>💾 ${t('saveNote')}</small><button class="btn ghost danger" id="sReset">${t('reset')}</button></div>
       </div>
       <button class="btn ghost" id="bBack">${t('back')}</button>
@@ -415,7 +426,25 @@ function settingsScreen(back) {
     save = newSave(); persist(); toast(t('resetDone')); homeScreen();
   };
   $('bBack').onclick = back;
+  // online account
+  const busy = on => scr.querySelectorAll('.account .btn').forEach(b => b.disabled = on);
+  const after = r => { toast(r === 'loaded' ? t('cloudLoaded') : t('cloudSaved')); buildDanCacheReset(); settingsScreen(back); };
+  if ($('aIn')) {
+    const go = async signup => {
+      const n = $('aName').value.trim(), p = $('aPass').value, err = $('aErr');
+      if (!validName(n)) return err.textContent = t('cloudBadName');
+      if (p.length < 6) return err.textContent = t('cloudShortPass');
+      busy(true); err.textContent = '…';
+      try { after(signup ? await cloudSignup(n, p) : await cloudLogin(n, p)); }
+      catch (e) { err.textContent = cloudErrorText(e); busy(false); }
+    };
+    $('aIn').onclick = () => go(false); $('aUp').onclick = () => go(true);
+  }
+  if ($('aSync')) $('aSync').onclick = async () => { busy(true); try { after(await cloudSync()); } catch (e) { toast(cloudErrorText(e)); busy(false); } };
+  if ($('aOut')) $('aOut').onclick = () => { cloudLogout(); settingsScreen(back); };
 }
+// a loaded save can change armor/skin: rebuild Dan's sprites
+function buildDanCacheReset() { for (const k in danSets) delete danSets[k]; }
 
 /* ---------------- in-game: pause & results ---------------- */
 function pauseScreen() {
@@ -546,6 +575,7 @@ buildSprites();
 fit(); setupTouch();
 homeScreen();
 requestAnimationFrame(loop);
+cloudBoot();
 addEventListener('beforeunload', persist);
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseScreen(); if (AC) { if (document.hidden) AC.suspend(); else AC.resume(); } if (!document.hidden) checkUpdate(); });
 checkUpdate();

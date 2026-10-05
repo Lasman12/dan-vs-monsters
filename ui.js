@@ -348,6 +348,7 @@ function settingsScreen(back) {
 function pauseScreen() {
   state = 'pause';
   document.body.classList.add('paused'); releaseTouch();
+  const inBoss = L.arena.active && !L.arena.done;   // no shopping in the middle of a boss fight
   show(`
     <div class="panel narrow">
       <h2>${t('paused')}</h2>
@@ -355,8 +356,8 @@ function pauseScreen() {
       <div class="col">
         <button class="btn big" id="bRes">${t('resume')}</button>
         <button class="btn" id="bRestart">${t('restart')}</button>
-        <button class="btn" id="bShopP">⬆️ ${t('upgrades')} <span class="coin">🪙 ${save.coins}</span></button>
-        ${world2() ? `<div class="row tight"><button class="btn" id="bSmithP">⚒️ ${t('smith')}</button><button class="btn" id="bSpecP">✨ ${t('specials')}</button></div>` : ''}
+        ${inBoss ? `<p class="hint small shop-closed">🔒 ${t('shopClosed')}</p>` : `<button class="btn" id="bShopP">⬆️ ${t('upgrades')} <span class="coin">🪙 ${save.coins}</span></button>
+        ${world2() ? `<div class="row tight"><button class="btn" id="bSmithP">⚒️ ${t('smith')}</button><button class="btn" id="bSpecP">✨ ${t('specials')}</button></div>` : ''}`}
         <button class="btn" id="bMap">${t('exitMap')}</button>
         <button class="btn ghost" id="bSet">⚙️ ${t('settings')}</button>
       </div>
@@ -367,8 +368,8 @@ function pauseScreen() {
   $('bMap').onclick = () => { persist(); mapScreen(); };
   $('bSet').onclick = () => settingsScreen(pauseScreen);
   const backToPause = () => { state = 'pause'; pauseScreen(); };
-  $('bShopP').onclick = () => upgradesScreen(backToPause);
-  if (world2()) { $('bSmithP').onclick = () => smithScreen(backToPause); $('bSpecP').onclick = () => specialsScreen(backToPause); }
+  if (!inBoss) $('bShopP').onclick = () => upgradesScreen(backToPause);
+  if (!inBoss && world2()) { $('bSmithP').onclick = () => smithScreen(backToPause); $('bSpecP').onclick = () => specialsScreen(backToPause); }
 }
 function resume() {
   hideScreen(); state = 'play'; setGameUI(true);

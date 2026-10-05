@@ -394,7 +394,7 @@ function buildLevel(n) {
     }
     // per-chunk mechanics
     if (ch !== START_CHUNK && ch !== CHECKPOINT_CHUNK && ch !== AMBUSH_CHUNK) {
-      if (has('ice') && ch.id !== 'gen-hops' && r() < 0.7) for (let i = 0; i < cw; i++) for (let y = 1; y < ROWS; y++) if (get(col + i, y) === 1 && get(col + i, y - 1) === 0) set(col + i, y, 10);
+      if (has('ice') && !['gen-hops', 'gen-switch2'].includes(ch.id) && r() < 0.7) for (let i = 0; i < cw; i++) for (let y = 1; y < ROWS; y++) if (get(col + i, y) === 1 && get(col + i, y - 1) === 0) set(col + i, y, 10);
       if (has('geyser')) for (let i = 2; i < cw - 2; i++) for (let y = 4; y < ROWS; y++) {
         const gx = col + i;
         if ((get(gx, y) === 1 || get(gx, y) === 10) && get(gx, y - 1) === 0 && get(gx, y - 2) === 0 && get(gx, y - 3) === 0 && r() < 0.05 && !lv.geysers.some(g => Math.abs(g.x - gx * T) < 6 * T)) lv.geysers.push({ x: gx * T + 8, y: y * T, t: r() * 220 });
@@ -840,7 +840,7 @@ function flipToggle() {
   unstuck(P);
   for (const e of L.enemies) if (!e.fly) unstuck(e);
 }
-function hitSwitch(s) { s.cd = 20; flipToggle(); burst(s.x + 5, s.y + 5, 10, [L.toggle ? '#4a8aff' : '#ff4a5a', '#fff'], 2); cam.shake = 3; }
+function hitSwitch(s) { s.cd = 45; flipToggle(); burst(s.x + 5, s.y + 5, 10, [L.toggle ? '#4a8aff' : '#ff4a5a', '#fff'], 2); cam.shake = 3; }
 function openChest(c) {
   c.open = true; sfx('chest');
   const n = c.old ? 3 : Math.round(8 + L.n * 1.5);
@@ -1464,6 +1464,18 @@ function drawProjectiles() {
     }
   }
 }
+// a bouncing "HIT ME!" sign over every crystal (drawn above the darkness)
+function drawSwitchSigns() {
+  for (const s of L.switches) if (onScreen(s)) {
+    const bx = Math.round(s.x + s.w / 2 - cam.x), by = Math.round(s.y - 9 - cam.y + Math.sin(frame * 0.15) * 2);
+    ctx.font = '6px "Press Start 2P", Rubik, monospace'; ctx.textAlign = 'center'; ctx.direction = 'ltr';
+    const label = t('hitMe'), lw = Math.ceil(ctx.measureText(label).width) + 6;
+    ctx.fillStyle = OUTLINE; ctx.fillRect(bx - lw / 2 - 1, by - 9, lw + 2, 10);
+    ctx.fillStyle = L.toggle ? '#4a7aff' : '#e04a5a'; ctx.fillRect(bx - lw / 2, by - 8, lw, 8);
+    ctx.fillStyle = '#fff'; ctx.fillText(label, bx, by - 1);
+    ctx.fillStyle = OUTLINE; ctx.fillRect(bx - 3, by + 1, 7, 1); ctx.fillRect(bx - 2, by + 2, 5, 1); ctx.fillRect(bx - 1, by + 3, 3, 1);
+  }
+}
 function drawDarkness(radius) {
   if (!drawDarkness.c) drawDarkness.c = document.createElement('canvas');
   const c = drawDarkness.c; if (c.width !== VW || c.height !== VH) { c.width = VW; c.height = VH; }
@@ -1523,6 +1535,7 @@ function render() {
   if (th.deco === 'snow' || th.deco === 'embers') { ctx.fillStyle = th.deco === 'snow' ? '#fff' : '#ff9a3a'; for (let i = 0; i < 50; i++) { const sp = th.deco === 'snow' ? 1 : -0.6; const x = ((i * 89 + Math.sin(frame * 0.02 + i) * 20 - cam.x * 0.8) % VW + VW) % VW; const y = ((i * 61 + frame * sp * (0.5 + (i % 3) * 0.3)) % VH + VH) % VH; ctx.fillRect(x | 0, y | 0, i % 3 ? 1 : 2, i % 3 ? 1 : 2); } }
   const darkR = L.ink > 0 ? 60 : (L.dark || (L.arena.active && L.arena.dark)) ? 88 : 0;
   if (darkR) drawDarkness(darkR);
+  drawSwitchSigns();
   if (L.slowT > 0) { ctx.fillStyle = 'rgba(120,80,255,0.12)'; ctx.fillRect(0, 0, VW, VH); }
   ctx.restore();
 }

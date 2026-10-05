@@ -2,6 +2,7 @@
 /* UI text in English (default), Spanish and Hebrew. t('key', a, b) fills {0} {1}. */
 const STR = {
   en: {
+    hitMe: 'HIT ME!', shopClosed: 'The shop is closed during boss fights', 
     updateAvail: 'New version {0} is out!', updateBtn: '⬇ Download update', 
     title: 'Dan vs. The Monsters', tagline: "Dan doesn't need a reason. He just wants to beat up every monster. Because he feels like it.",
     play: 'PLAY', map: 'Map', upgrades: 'Upgrades', smith: 'Weaponsmith', specials: 'Specials', medals: 'Medals', help: 'How to play', settings: 'Settings',
@@ -58,6 +59,7 @@ const STR = {
       'Medals: gold = no falls, silver = up to 2 falls, bronze = finished.', 'Tap the big "i" on any upgrade to see what it does.'],
   },
   es: {
+    hitMe: '¡GOLPÉAME!', shopClosed: 'La tienda está cerrada durante los jefes', 
     updateAvail: '¡Nueva versión {0}!', updateBtn: '⬇ Descargar actualización', 
     title: 'Dan contra los Monstruos', tagline: 'Dan no necesita una razón. Solo quiere darle una paliza a todos los monstruos. Porque le da la gana.',
     play: 'JUGAR', map: 'Mapa', upgrades: 'Mejoras', smith: 'Herrero', specials: 'Poderes', medals: 'Medallas', help: 'Cómo jugar', settings: 'Ajustes',
@@ -114,6 +116,7 @@ const STR = {
       'Medallas: oro = sin caídas, plata = hasta 2 caídas, bronce = terminado.', 'Toca la "i" grande de cualquier mejora para ver lo que hace.'],
   },
   he: {
+    hitMe: 'תרביץ לי!', shopClosed: 'החנות סגורה בזמן קרב בוס', 
     updateAvail: 'יצאה גרסה חדשה {0}!', updateBtn: '⬇ הורד עדכון', 
     title: 'דן נגד המפלצות', tagline: 'דן לא צריך סיבה. הוא פשוט רוצה להרביץ לכל המפלצות. כי בא לו.',
     play: 'שחק', map: 'מפה', upgrades: 'שדרוגים', smith: 'הנפח', specials: 'כוחות', medals: 'מדליות', help: 'איך משחקים', settings: 'הגדרות',

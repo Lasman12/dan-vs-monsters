@@ -5,25 +5,25 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.2.0';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.3.0';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */
 const THEMES = [
   { name: n3('Green Forest', 'Bosque Verde', 'היער הירוק'), sky: ['#6cc0ee', '#d4f1ff'], far: '#8cc7a0', near: '#5a9a6a', top: '#5bc23c', topD: '#3d8f2a', fill: '#8a5a34', fillD: '#6b4226', plat: '#a0703c', haz: '#3fa7e0', deco: 'clouds', slime: '#5ccf4a',
-    gim: ['chests'], ambush: 1 },
+    gim: ['chests', 'switch'], ambush: 1 },
   { name: n3('Stone Caves', 'Cuevas de Piedra', 'מערות האבן'), sky: ['#15131f', '#2c2a40'], far: '#2a2840', near: '#37334f', top: '#8a8a9c', topD: '#5a5a6c', fill: '#4a4658', fillD: '#38344a', plat: '#6d6478', haz: '#3fc8ff', deco: 'crystals', slime: '#4a9aff',
-    gim: ['dark', 'stalactites'], ambush: 1 },
+    gim: ['dark', 'stalactites', 'switch'], ambush: 1 },
   { name: n3('Scorching Desert', 'Desierto Ardiente', 'מדבר החול הלוהט'), sky: ['#f39a4b', '#ffe2a8'], far: '#eab06a', near: '#d48c45', top: '#f2d27a', topD: '#d9b45c', fill: '#c98e4a', fillD: '#a87038', plat: '#b5813f', haz: '#d8a040', deco: 'sun', slime: '#e0a040',
-    gim: ['cannon'], chase: 'sand', ambush: 1 },
+    gim: ['cannon', 'switch'], chase: 'sand', ambush: 1 },
   { name: n3('Poison Swamp', 'Pantano Venenoso', 'ביצת הרעל'), sky: ['#3d4d30', '#7d8f5a'], far: '#4a5c3a', near: '#33422a', top: '#7a9a3a', topD: '#4f6a28', fill: '#4a3b2a', fillD: '#38291c', plat: '#5c4a30', haz: '#9be04a', deco: 'fog', slime: '#a05ad0',
     gim: ['bounce', 'switch'], ambush: 1 },
   { name: n3('Snowy Peaks', 'Picos Nevados', 'ההרים המושלגים'), sky: ['#8fb8e0', '#eef6ff'], far: '#d0deef', near: '#a7bdd6', top: '#ffffff', topD: '#cfe0f0', fill: '#7b8fa8', fillD: '#5d6f88', plat: '#a7c7e7', haz: '#7fd6ff', deco: 'snow', slime: '#9ae0ff',
-    gim: ['ice', 'stalactites'], ambush: 1 },
+    gim: ['ice', 'stalactites', 'switch'], ambush: 1 },
   { name: n3('Ancient Fortress', 'Fortaleza Antigua', 'המבצר העתיק'), sky: ['#4a5a7c', '#9aa8c4'], far: '#55607c', near: '#3b4560', top: '#a4a4b0', topD: '#74747f', fill: '#6a6a76', fillD: '#50505b', plat: '#8b6f4e', haz: '#4aa0e0', deco: 'towers', slime: '#9aa0b0',
     gim: ['cannon', 'conveyor', 'switch'], ambush: 2 },
   { name: n3('Volcano', 'Volcán', 'הר הגעש'), sky: ['#2a0808', '#7a2a10'], far: '#4a1a12', near: '#2a0e0a', top: '#6a4034', topD: '#40261f', fill: '#3a2420', fillD: '#2a1814', plat: '#6a4030', haz: '#ff6a1a', deco: 'embers', slime: '#ff5a2a',
-    gim: ['geyser'], chase: 'lava', ambush: 1 },
+    gim: ['geyser', 'switch'], chase: 'lava', ambush: 1 },
   { name: n3('Haunted Woods', 'Bosque Embrujado', 'היער הרדוף'), sky: ['#120a24', '#3a2050'], far: '#2a1840', near: '#1e1030', top: '#6a4a8a', topD: '#40285a', fill: '#2e2238', fillD: '#221a2a', plat: '#4a3460', haz: '#b04aff', deco: 'stars', slime: '#c050ff',
     gim: ['dark', 'rhythm'], ambush: 2 },
   { name: n3('Sky Kingdom', 'Reino del Cielo', 'ממלכת השמיים'), sky: ['#8fd0ff', '#fff2dc'], far: '#ffffff', near: '#e4f2ff', top: '#ffffff', topD: '#d8e8f8', fill: '#e8d8b0', fillD: '#c8b890', plat: '#ffe8a0', haz: '#7fb8ff', deco: 'clouds', slime: '#ff9ad0',
@@ -34,7 +34,7 @@ const THEMES = [
   { name: n3('Crystal Caverns', 'Cavernas de Cristal', 'מערות הקריסטל'), sky: ['#0c1028', '#1e2a5a'], far: '#1a2450', near: '#24306a', top: '#8ae0ff', topD: '#4aa0d0', fill: '#2a3a6a', fillD: '#1e2a50', plat: '#5a7ac0', haz: '#3ff0ff', deco: 'crystals', slime: '#5ad0ff',
     gim: ['dark', 'switch', 'stalactites'], ambush: 1 },
   { name: n3('Mushroom Jungle', 'Jungla de Hongos', 'ג׳ונגל הפטריות'), sky: ['#2a4a2a', '#8ac070'], far: '#3a6a3a', near: '#2a502a', top: '#a0d040', topD: '#6a9a20', fill: '#5a3a2a', fillD: '#40281c', plat: '#d04040', haz: '#c0ff40', deco: 'fog', slime: '#c060ff',
-    gim: ['bounce', 'geyser'], ambush: 2 },
+    gim: ['bounce', 'geyser', 'switch'], ambush: 2 },
   { name: n3('Clockwork Factory', 'Fábrica de Engranajes', 'מפעל השעונים'), sky: ['#2a2a30', '#5a5048'], far: '#3a3830', near: '#2a2820', top: '#b08a4a', topD: '#806030', fill: '#4a4a52', fillD: '#36363e', plat: '#8a8a96', haz: '#ff8a2a', deco: 'towers', slime: '#c0a060',
     gim: ['conveyor', 'cannon', 'rhythm'], ambush: 1 },
   { name: n3('Sunken Ruins', 'Ruinas Hundidas', 'החורבות השקועות'), sky: ['#0a3a5a', '#2a8aa0'], far: '#145070', near: '#0e3a55', top: '#7ab0a0', topD: '#4a8070', fill: '#5a6a70', fillD: '#465458', plat: '#8aa0a0', haz: '#2ad0ff', deco: 'bubbles', slime: '#40e0c0',
@@ -42,9 +42,9 @@ const THEMES = [
   { name: n3('Thunder Peaks', 'Cumbres del Trueno', 'פסגות הרעם'), sky: ['#2a2a40', '#6a6a90'], far: '#4a4a68', near: '#36364e', top: '#c8c8e0', topD: '#9090b0', fill: '#5a5a70', fillD: '#46465a', plat: '#a0a0c0', haz: '#ffff60', deco: 'storm', slime: '#ffe040',
     gim: ['wind', 'rhythm', 'cannon'], ambush: 1 },
   { name: n3('Frozen Citadel', 'Ciudadela Helada', 'המצודה הקפואה'), sky: ['#3a5a8a', '#c0e0ff'], far: '#a0c0e0', near: '#7090c0', top: '#e0f8ff', topD: '#a0d0f0', fill: '#6080b0', fillD: '#4a6a98', plat: '#a0d0ff', haz: '#a0f0ff', deco: 'snow', slime: '#80c0ff',
-    gim: ['ice', 'stalactites'], ambush: 2 },
+    gim: ['ice', 'stalactites', 'switch'], ambush: 2 },
   { name: n3('Toxic Factory', 'Fábrica Tóxica', 'המפעל הרעיל'), sky: ['#1a2a10', '#4a6a20'], far: '#2a3a18', near: '#1e2a10', top: '#8ac030', topD: '#5a8a20', fill: '#3a3a30', fillD: '#2a2a22', plat: '#6a7a40', haz: '#a0ff20', deco: 'fog', slime: '#90ff40',
-    gim: ['conveyor', 'geyser'], chase: 'toxic', ambush: 1 },
+    gim: ['conveyor', 'geyser', 'switch'], chase: 'toxic', ambush: 1 },
   { name: n3('Ghost Ship', 'Barco Fantasma', 'ספינת הרפאים'), sky: ['#0a0a1a', '#2a2a4a'], far: '#1a1a30', near: '#121226', top: '#7a5a3a', topD: '#5a4028', fill: '#4a3424', fillD: '#36261a', plat: '#8a6a4a', haz: '#3a6aff', deco: 'stars', slime: '#80a0ff',
     gim: ['dark', 'cannon', 'wind'], ambush: 2 },
   { name: n3('Magma Core', 'Núcleo de Magma', 'ליבת המאגמה'), sky: ['#3a0800', '#a03000'], far: '#5a1808', near: '#3a0e04', top: '#4a2a20', topD: '#2a1610', fill: '#2a1410', fillD: '#1a0c08', plat: '#5a3020', haz: '#ffaa20', deco: 'embers', slime: '#ff8020',

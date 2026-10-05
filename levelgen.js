@@ -97,11 +97,45 @@ function genClimb(r, o) {
   return { id: 'gen-climb', rows: genRows(g), tag: 'wall' };
 }
 
+/* crystal puzzle: climb red stairs to the crystal, hit it -> the red wall vanishes and a blue bridge appears over spikes */
+function genSwitchWall(r, o) {
+  const m = ri(r, 1, 2), x0 = 3, top = 2 * m + ri(r, 0, 1);
+  const wx = x0 + 3 * m + ri(r, 3, 4), sp = ri(r, 3, 5), w = wx + sp + ri(r, 5, 7);
+  const g = genGrid(w);
+  for (let i = 0; i < w; i++) column(g, i, 0);
+  for (let k = 1; k <= m; k++) { const h = k === m ? top : 2 * k; for (let i = 0; i < 2; i++) g[GS + 1 - h][x0 + 3 * (k - 1) + i] = 'r'; }
+  const tx = x0 + 3 * (m - 1);
+  g[GS - top][tx + 2] = 's';                       // crystal next to the top step
+  g[GS][wx] = '|';                                 // red wall up to the sky
+  for (let i = 1; i <= sp; i++) { g[GS + 1][wx + i] = '^'; g[GS][wx + i] = 'b'; }   // spikes in a dip, blue bridge over them
+  for (let i = 1; i <= sp; i++) g[GS + 2][wx + i] = '#';
+  if (r() < 0.5) g[GS - 1][wx + sp + 2] = 'C';
+  if (r() < 0.35) g[GS][w - 4] = '$';
+  return { id: 'gen-switch', rows: genRows(g), tag: 'switch' };
+}
+/* crystal bridge: red platforms to a pillar with the crystal, hit it -> blue platforms carry you on */
+function genSwitchBridge(r, o) {
+  const g = genGrid(30);
+  for (let x = 0; x < 4; x++) column(g, x, 0);
+  let x = 4, s = 0;
+  const plat = (ch, len) => { x += 2; s = clamp(s + ri(r, 0, 1), 1, 3); for (let i = 0; i < len; i++) g[GS + 1 - s][x + i] = ch; if (r() < 0.5) g[GS - s][x] = 'C'; x += len; };
+  plat('r', ri(r, 3, 4));
+  if (r() < 0.6) plat('r', 3);
+  x += 2; const ph = clamp(s + 1, 2, 4);
+  column(g, x, ph); column(g, x + 1, ph);          // safe pillar; the crystal floats just past its edge
+  g[GS - ph][x + 2] = 's'; x += 2; s = ph;
+  while (x < 21) { x += 2; s = clamp(s + ri(r, -1, 0), 1, 4); const len = ri(r, 3, 4); for (let i = 0; i < len; i++) g[GS + 1 - s][x + i] = 'b'; x += len; }
+  const end = Math.min(x + 2, 26), w = end + 4;
+  for (let i = end; i < w; i++) column(g, i, 0);
+  return { id: 'gen-switch2', rows: genRows(g).map(row => row.slice(0, w)), tag: 'switch' };
+}
+
 const GENERATORS = [
   { fn: genSteps, d: 1, w: 3 }, { fn: genSpikes, d: 1, w: 2 }, { fn: genHops, d: 2, w: 3 }, { fn: genClimb, d: 3, w: 1.5 },
+  { fn: genSwitchWall, d: 1, w: 2.5, need: 'switch' }, { fn: genSwitchBridge, d: 2, w: 2.5, need: 'switch' },
 ];
 function generateChunk(r, d, gim) {
-  const ok = GENERATORS.filter(gn => gn.d <= d);
+  const ok = GENERATORS.filter(gn => gn.d <= d && (!gn.need || gim.includes(gn.need)));
   let total = ok.reduce((a, gn) => a + gn.w, 0), pick = r() * total;
   for (const gn of ok) { pick -= gn.w; if (pick <= 0) return gn.fn(r, { d, gim }); }
   return ok[0].fn(r, { d, gim });

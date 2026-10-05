@@ -243,6 +243,38 @@
   }
 
   .row.tight { margin-top: 0; gap: 8px; } .row.tight .btn { flex: 1; }
+  /* skins */
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .skin-card { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #120d1a; border: 3px solid #160e1c; box-shadow: 0 0 0 2px var(--line); border-radius: 6px; padding: 10px 6px; }
+  .skin-card.on { box-shadow: 0 0 0 3px var(--good); }
+  .skin-card.not-owned canvas { filter: brightness(.55); }
+  .skin-card canvas { width: 84px; height: 84px; image-rendering: pixelated; background: radial-gradient(circle at 50% 70%, #3a2a50, transparent 70%); }
+  .skin-card b { font-size: 14px; }
+  /* difficulty, crowns */
+  .mode-tabs { max-width: 420px; margin: 0 auto 8px; }
+  .tab.super.on { background: linear-gradient(#c070ff, #8030d0); color: #fff; }
+  .tab .crown, .pill .crown { vertical-align: middle; }
+  .map.super .node { box-shadow: 0 4px 0 #160e1c, 0 0 0 2px #a050ff; }
+  .node-crown { position: absolute; top: -12px; right: -8px; filter: drop-shadow(1px 1px 0 #160e1c); }
+  .node-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; background: #0008; border-radius: 4px; }
+  .super-desc { color: #d8b0ff; max-width: 640px; margin: 0 auto 10px; }
+  .cell-crown { position: absolute; transform: translate(22px, -6px); }
+  .mcell { position: relative; }
+  /* score summary */
+  .stars { display: flex; justify-content: center; gap: 12px; margin: 6px 0; }
+  .star { display: flex; flex-direction: column; align-items: center; opacity: .35; }
+  .star span { font-size: 34px; color: #6a6478; line-height: 1; }
+  .star.on { opacity: 1; animation: starPop .45s var(--d) both cubic-bezier(.2,1.8,.4,1); }
+  .star.on span { color: var(--accent); text-shadow: 0 0 10px #ffcc3380, 2px 2px 0 #160e1c; }
+  .star small { font-size: 11px; color: var(--muted); }
+  @keyframes starPop { from { transform: scale(0) rotate(-90deg); } }
+  .score-box { background: #120d1a; border-radius: 6px; padding: 8px 12px; margin: 8px 0; display: grid; gap: 3px; }
+  .score-row { display: flex; justify-content: space-between; animation: rowIn .3s var(--d) both; font-size: 14px; }
+  .score-row b { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--text); align-self: center; }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-12px); } }
+  .score-total { display: flex; justify-content: space-between; border-top: 2px dashed var(--line); padding-top: 6px; margin-top: 4px; font-weight: 900; }
+  .score-total b { font-family: 'Press Start 2P', monospace; font-size: 16px; color: var(--accent); }
+  .score-box .best { color: var(--muted); text-align: center; }
   .update-banner { display: block; margin-top: 8px; text-align: center; text-decoration: none; color: #fff; font-weight: 700; background: linear-gradient(90deg, #2a8a3a, #3a8aff); border: 3px solid #160e1c; border-radius: 10px; padding: 6px 10px; box-shadow: 0 3px 0 #160e1c; }
   .update-banner b { color: var(--accent); margin-inline-start: 6px; }
   /* touch: special & weapon swap */
@@ -342,14 +374,15 @@
   <button class="tbtn tfs" id="fsBtn" aria-label="fullscreen">⛶</button>
 </div>
 <div id="rotate"><div class="ph"></div>↻</div>
-<script src="data.js?v=2.3.0"></script>
-<script src="i18n.js?v=2.3.0"></script>
-<script src="levelgen.js?v=2.3.0"></script>
-<script src="chunks.js?v=2.3.0"></script>
-<script src="engine.js?v=2.3.0"></script>
-<script src="bosses.js?v=2.3.0"></script>
-<script src="preview.js?v=2.3.0"></script>
-<script src="ui.js?v=2.3.0"></script>
-<script>if ('serviceWorker' in navigator && location.protocol === 'https:' && !/DanApp/.test(navigator.userAgent)) navigator.serviceWorker.register('sw.js?v=2.3.0').catch(() => {});</script>
+<script src="data.js?v=2.4.0"></script>
+<script src="i18n.js?v=2.4.0"></script>
+<script src="levelgen.js?v=2.4.0"></script>
+<script src="chunks.js?v=2.4.0"></script>
+<script src="audio.js?v=2.4.0"></script>
+<script src="engine.js?v=2.4.0"></script>
+<script src="bosses.js?v=2.4.0"></script>
+<script src="preview.js?v=2.4.0"></script>
+<script src="ui.js?v=2.4.0"></script>
+<script>if ('serviceWorker' in navigator && location.protocol === 'https:' && !/DanApp/.test(navigator.userAgent)) navigator.serviceWorker.register('sw.js?v=2.4.0').catch(() => {});</script>
 </body>
 </html>

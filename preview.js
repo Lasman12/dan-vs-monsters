@@ -7,7 +7,7 @@ const PV_W = 128, PV_H = 72, PV_FLOOR = 60;
 let pvScenes = [];   // [{ canvas, draw(g, t), t }]
 
 function pvDan(g, x, y, o = {}) {
-  const set = danSet(o.armor !== undefined ? o.armor : save.armor);
+  const set = danSet(o.armor !== undefined ? o.armor : save.armor, o.skin || save.skin);
   const legs = o.legs || 'idle', body = o.atk ? 'atk' : 'idle', face = o.face || 1;
   const ent = { x, y, w: 10, h: 14 };
   if (o.alpha !== undefined) g.globalAlpha = o.alpha;

@@ -5,7 +5,7 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.3.0';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.4.0';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */
@@ -123,6 +123,20 @@ const SPECIALS = {
   heal:     { icon: '💚', cost: 100, p: [800, 1400, 2200], power: [0.4, 0.6, 0.8] },
 };
 
+/* skins: colors + a hat or cape. Unlocked with coins, or by achievements (req) */
+const SKINS = [
+  { id: 'classic', name: n3('Classic', 'Clásico', 'קלאסי'), p: 0 },
+  { id: 'ninja', name: n3('Ninja', 'Ninja', 'נינג׳ה'), p: 300, hair: '#1a1a22', pants: '#1a1a22', boots: '#1a1a22', hat: 'band', hatCol: '#e03040' },
+  { id: 'pirate', name: n3('Pirate', 'Pirata', 'פיראט'), p: 450, pants: '#6a4a2a', hat: 'bandana', hatCol: '#c02030', patch: true },
+  { id: 'viking', name: n3('Viking', 'Vikingo', 'ויקינג'), p: 600, hair: '#e0a040', hat: 'horns', hatCol: '#c8c8d0' },
+  { id: 'wizard', name: n3('Wizard', 'Mago', 'קוסם'), p: 800, hair: '#e8e8f0', hat: 'wizard', hatCol: '#6a3aa0', cape: '#4a2a8a' },
+  { id: 'robot', name: n3('Robot', 'Robot', 'רובוט'), p: 1000, skin: '#b8c0cc', hair: '#6a7080', eye: '#ff3030', pants: '#4a5060', boots: '#2a2a30' },
+  { id: 'hero', name: n3('Super Hero', 'Superhéroe', 'גיבור על'), p: 1500, cape: '#e03040', pants: '#3050c0', hat: 'mask', hatCol: '#3050c0' },
+  { id: 'golden', name: n3('Golden Dan', 'Dan Dorado', 'דן הזהב'), req: { gold: 10 }, skin: '#ffd870', hair: '#ffcc33', pants: '#c08a10', boots: '#a07010' },
+  { id: 'royal', name: n3('Monster Royalty', 'Realeza Monstruo', 'מלכות המפלצות'), req: { crowns: 3 }, hat: 'crown', hatCol: '#a050ff', cape: '#6a2aa0' },
+];
+const HARD_POTIONS = 4;   // Super Hard: potions you may drink per level
+
 const HP_STEP = 20;
 const HP_PRICES = [40, 70, 110, 160, 220, 290, 370, 460, 560, 680,      // world 1
   800, 950, 1100, 1300, 1500, 1750, 2000, 2300, 2600, 3000];             // world 2
@@ -165,16 +179,19 @@ const store = {
 };
 function newSave() {
   return {
-    v: 2, coins: 0, unlocked: 1, medals: Array(NLEVELS).fill(0), best: Array(NLEVELS).fill(0), chests: Array(NLEVELS).fill(0),
+    v: 2, coins: 100, unlocked: 1, medals: Array(NLEVELS).fill(0), best: Array(NLEVELS).fill(0), chests: Array(NLEVELS).fill(0),
     armor: 0, weapon: 0, hpLv: 0, dbl: false, dash: false, potions: 1, tips: {}, kills: 0, bosses: 0, atkLv: 0, magLv: 0, coinLv: 0,
     bowLv: 0, hammerLv: 0, equip: 'sword', thunder: 0, sharp: 0,
     spec: { fireball: 0, storm: 0, shield: 0, slow: 0, heal: 0 }, special: null,
+    skin: 'classic', skins: ['classic'], crowns: Array(NLEVELS).fill(0), scores: Array(NLEVELS).fill(0), stars: Array(NLEVELS).fill(0), mode: 'normal', tutDone: false,
   };
 }
 function fixSave(s) {
   const base = newSave(), out = Object.assign(base, s || {});
-  for (const k of ['medals', 'best', 'chests']) { const a = Array.isArray(out[k]) ? out[k] : []; out[k] = Array.from({ length: NLEVELS }, (_, i) => a[i] || 0); }
+  for (const k of ['medals', 'best', 'chests', 'crowns', 'scores', 'stars']) { const a = Array.isArray(out[k]) ? out[k] : []; out[k] = Array.from({ length: NLEVELS }, (_, i) => a[i] || 0); }
   out.spec = Object.assign(newSave().spec, out.spec || {});
+  if (!Array.isArray(out.skins) || !out.skins.length) out.skins = ['classic'];
+  if (s && s.v === 2 && s.tutDone === undefined && (s.unlocked > 1 || (s.medals || []).some(m => m))) out.tutDone = true;   // players who already played skip the tutorial
   out.v = 2;
   return out;
 }

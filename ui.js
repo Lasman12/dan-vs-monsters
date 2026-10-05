@@ -26,6 +26,19 @@ function medalSVG(tier, sym, size = 64, locked = false) {
     ${locked ? '<rect x="7" y="8" width="2" height="3" fill="#1a1620"/>' : `<rect x="6" y="8" width="4" height="4" fill="${sym}"/><rect x="7" y="7" width="2" height="6" fill="${sym}"/><rect x="5" y="9" width="6" height="2" fill="${sym}"/><rect x="5" y="7" width="1" height="1" fill="#fff" opacity=".7"/>`}
   </svg>`;
 }
+function crownSVG(size = 32, got = true) {
+  const c = got ? '#a050ff' : '#3a3448', d = got ? '#6a2aa0' : '#26222f', g = got ? '#ffcc33' : '#4a4458';
+  return `<svg class="crown" width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="1" y="4" width="2" height="2" fill="${g}"/><rect x="7" y="2" width="2" height="2" fill="${g}"/><rect x="13" y="4" width="2" height="2" fill="${g}"/>
+    <rect x="1" y="6" width="2" height="6" fill="${c}"/><rect x="13" y="6" width="2" height="6" fill="${c}"/><rect x="7" y="4" width="2" height="8" fill="${c}"/>
+    <rect x="3" y="8" width="4" height="4" fill="${c}"/><rect x="9" y="8" width="4" height="4" fill="${c}"/><rect x="1" y="12" width="14" height="2" fill="${d}"/>
+    <rect x="4" y="12" width="2" height="2" fill="${g}"/><rect x="10" y="12" width="2" height="2" fill="${g}"/></svg>`;
+}
+function skinUnlocked(sk) {
+  if (save.skins.includes(sk.id)) return true;
+  if (sk.req) return (sk.req.gold && save.medals.filter(m => m === 3).length >= sk.req.gold) || (sk.req.crowns && save.crowns.filter(c => c).length >= sk.req.crowns);
+  return false;
+}
 function powerLevel() {
   const s = save, sp = Object.values(s.spec).reduce((a, b) => a + b, 0);
   return 1 + s.armor + s.weapon + s.hpLv + s.atkLv + s.magLv + Math.floor(s.coinLv / 5) + (s.dbl ? 1 : 0) + (s.dash ? 1 : 0) + s.bowLv + s.hammerLv + s.thunder + s.sharp + sp;
@@ -55,7 +68,7 @@ function uiFrame() {
 
 /* ---------------- home ---------------- */
 function homeScreen() {
-  state = 'home'; setGameUI(false);
+  state = 'home'; setGameUI(false); playMusic('menu'); duckMusic(false);
   if (newBuild && !IS_APP) { let tried = null; try { tried = sessionStorage.getItem('dvm_reload_for'); } catch (e) { } if (tried !== newBuild) return reloadForUpdate(newBuild); }
   const medals = save.medals.filter(m => m > 0).length, w2 = world2();
   const ni = nextLevelIdx(), th = THEMES[ni];
@@ -69,6 +82,7 @@ function homeScreen() {
         <div class="pills">
           <div class="pill">🪙 <b>${save.coins}</b></div>
           <div class="pill">🏅 <b>${medals}/${NLEVELS}</b></div>
+          ${save.crowns.some(c => c) ? `<div class="pill crowns">${crownSVG(16)} <b>${save.crowns.filter(c => c).length}</b></div>` : ''}
           <div class="pill">⚡ <b>${t('power', powerLevel())}</b></div>
           <button class="iconbtn" id="hSettings" aria-label="${t('settings')}">⚙️</button>
         </div>
@@ -79,6 +93,7 @@ function homeScreen() {
           ${cat('hUp', '⬆️', t('upgrades'), false)}
           ${cat('hSmith', '⚒️', t('smith'), !w2)}
           ${cat('hSpec', '✨', t('specials'), !w2)}
+          ${cat('hSkins', '👕', t('skins'), false)}
           ${cat('hMedals', '🏅', t('medals'), false)}
           ${cat('hHelp', '❔', t('help'), false)}
         </div>
@@ -94,7 +109,8 @@ function homeScreen() {
       </div>
     </div>`, 'home-bg');
   heroCv = $('homeHero');
-  $('hPlay').onclick = () => { initAudio(); goFullscreen(); startLevel(ni); };
+  $('hPlay').onclick = () => { initAudio(); goFullscreen(); if (!save.tutDone) startLevel(0, { tut: true }); else startLevel(ni); };
+  $('hSkins').onclick = () => skinsScreen();
   $('hMap').onclick = () => mapScreen();
   $('hUp').onclick = () => upgradesScreen(homeScreen);
   $('hSmith').onclick = () => w2 ? smithScreen(homeScreen) : toast(t('unlockW2'));
@@ -118,6 +134,8 @@ function mapScreen(world) {
       <span class="boss">${locked ? '🔒' : '👹 ' + esc(loc(BOSSES[i].name))}</span>
       ${locked ? '' : `<span class="chests">🎁 ${chests}/3</span>`}
       ${save.medals[i] ? medalSVG(save.medals[i], MEDALS[i].sym, 30) : ''}
+      ${save.crowns[i] ? `<span class="node-crown">${crownSVG(24)}</span>` : ''}
+      ${save.mode === 'super' && !locked && !save.medals[i] ? '<span class="node-lock">🔒</span>' : ''}
     </button>`);
   }
   show(`
@@ -127,10 +145,21 @@ function mapScreen(world) {
         <button class="tab ${mapWorld === 0 ? 'on' : ''}" id="mw0">${t('world', 1)}</button>
         <button class="tab ${mapWorld === 1 ? 'on' : ''} ${w2 ? '' : 'locked'}" id="mw1">${w2 ? '' : '🔒 '}${t('world', 2)}</button>
       </div>
-      <div class="map">${nodes.join('')}</div>
+      <div class="tabs mode-tabs">
+        <button class="tab ${save.mode !== 'super' ? 'on' : ''}" id="mdN">${t('modeNormal')}</button>
+        <button class="tab super ${save.mode === 'super' ? 'on' : ''}" id="mdS">${crownSVG(16)} ${t('modeSuper')}</button>
+      </div>
+      ${save.mode === 'super' ? `<p class="hint small super-desc">${t('superDesc')}</p>` : ''}
+      <div class="map ${save.mode === 'super' ? 'super' : ''}">${nodes.join('')}</div>
       <div class="row"><button class="btn" id="bUp">⬆️ ${t('upgrades')} <span class="coin">🪙 ${save.coins}</span></button><button class="btn ghost" id="bBack">${t('toHome')}</button></div>
     </div>`, 'title-bg');
-  scr.querySelectorAll('.node:not(.locked)').forEach(b => b.onclick = () => startLevel(+b.dataset.l));
+  scr.querySelectorAll('.node:not(.locked)').forEach(b => b.onclick = () => {
+    const i = +b.dataset.l;
+    if (save.mode === 'super') { if (!save.medals[i]) return toast(t('needMedal')); startLevel(i, { hard: true }); }
+    else startLevel(i);
+  });
+  $('mdN').onclick = () => { save.mode = 'normal'; persist(); mapScreen(mapWorld); };
+  $('mdS').onclick = () => { save.mode = 'super'; persist(); mapScreen(mapWorld); };
   $('mw0').onclick = () => mapScreen(0);
   $('mw1').onclick = () => w2 ? mapScreen(1) : toast(t('unlockW2'));
   $('bUp').onclick = () => upgradesScreen(() => mapScreen(mapWorld));
@@ -286,15 +315,54 @@ function specialsScreen(back) {
   $('bBack').onclick = back;
 }
 
+/* ---------------- skins ---------------- */
+function skinsScreen() {
+  state = 'shop'; setGameUI(false);
+  const cards = SKINS.map(sk => {
+    const owned = skinUnlocked(sk), on = save.skin === sk.id;
+    let act;
+    if (on) act = `<button class="btn small on" disabled>✔ ${t('equipped')}</button>`;
+    else if (owned) act = `<button class="btn small" data-skin="${sk.id}">${t('equip')}</button>`;
+    else if (sk.req) act = `<small class="locktxt">🔒 ${sk.req.gold ? t('unlockGold', sk.req.gold) : t('unlockCrowns', sk.req.crowns)}</small>`;
+    else act = `<button class="btn buy small" data-skinbuy="${sk.id}" ${save.coins < sk.p ? 'disabled' : ''}>🪙 ${sk.p}</button>`;
+    return `<div class="skin-card ${on ? 'on' : ''} ${owned ? '' : 'not-owned'}"><canvas width="28" height="28" data-prev="${sk.id}"></canvas><b>${esc(loc(sk.name))}</b>${act}</div>`;
+  }).join('');
+  show(`
+    <div class="panel wide">
+      <h2>👕 ${t('skins')}</h2>
+      <p class="sub">${t('skinsIntro')} · 🪙 <b>${save.coins}</b></p>
+      <div class="skins">${cards}</div>
+      <div class="row"><button class="btn ghost" id="bBack">${t('back')}</button></div>
+    </div>`, 'title-bg');
+  scr.querySelectorAll('[data-prev]').forEach(c => { const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#5bc23c'; g.fillRect(4, 25, 20, 2); pvDan(g, 9, 11, { skin: c.dataset.prev }); });
+  scr.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => { save.skin = b.dataset.skin; if (!save.skins.includes(save.skin)) save.skins.push(save.skin); persist(); sfx('switch'); skinsScreen(); });
+  scr.querySelectorAll('[data-skinbuy]').forEach(b => b.onclick = () => { const sk = SKINS.find(s => s.id === b.dataset.skinbuy); if (save.coins < sk.p) return; save.coins -= sk.p; save.skins.push(sk.id); save.skin = sk.id; persist(); sfx('buy'); skinsScreen(); });
+  $('bBack').onclick = homeScreen;
+}
+function finishTutorial() {
+  const first = !save.tutDone;
+  save.tutDone = true; persist(); stopMusic(); sfx('medal');
+  state = 'medal'; setGameUI(false);
+  show(`
+    <div class="panel narrow">
+      <h2>🎓 ${t('tutDone')}</h2>
+      <p class="sub">${t('tutDoneText')}</p>
+      <div class="coins-big">🪙 <b>${save.coins}</b></div>
+      <div class="col"><button class="btn big" id="bGo">${t('letsGo')}</button><button class="btn ghost" id="bHome">${t('toHome')}</button></div>
+    </div>`, 'title-bg');
+  $('bGo').onclick = () => startLevel(first ? 0 : nextLevelIdx());
+  $('bHome').onclick = homeScreen;
+}
+
 /* ---------------- medals / help / settings ---------------- */
 function medalsScreen() {
-  const cell = i => `<div class="mcell ${save.medals[i] ? '' : 'locked'}">${medalSVG(save.medals[i], MEDALS[i].sym, 48, !save.medals[i])}<span>${esc(loc(MEDALS[i].name))}</span><small>${save.medals[i] ? tierName(save.medals[i]) + (save.best[i] ? ' · ' + fmtTime(save.best[i]) : '') : t('locked')}</small></div>`;
+  const cell = i => `<div class="mcell ${save.medals[i] ? '' : 'locked'}">${save.crowns[i] ? `<span class="cell-crown">${crownSVG(20)}</span>` : ''}${medalSVG(save.medals[i], MEDALS[i].sym, 48, !save.medals[i])}<span>${esc(loc(MEDALS[i].name))}</span><small>${save.medals[i] ? tierName(save.medals[i]) + (save.best[i] ? ' · ' + fmtTime(save.best[i]) : '') : t('locked')}</small></div>`;
   show(`
     <div class="panel wide">
       <h2>🏅 ${t('myMedals')}</h2>
       <h4 class="wlabel">${t('world', 1)}</h4><div class="medals">${Array.from({ length: PER_WORLD }, (_, i) => cell(i)).join('')}</div>
       <h4 class="wlabel">${t('world', 2)}</h4><div class="medals">${Array.from({ length: PER_WORLD }, (_, i) => cell(i + PER_WORLD)).join('')}</div>
-      <p class="who">${t('kills')}: <b>${save.kills}</b> · ${t('bossesBeaten')}: <b>${save.bosses}</b> · 🎁 <b>${save.chests.reduce((a, c) => a + [0, 1, 2].filter(k => c & (1 << k)).length, 0)}/${NLEVELS * 3}</b></p>
+      <p class="who">${crownSVG(16)} ${t('crowns')}: <b>${save.crowns.filter(c => c).length}/${NLEVELS}</b> · ${t('kills')}: <b>${save.kills}</b> · ${t('bossesBeaten')}: <b>${save.bosses}</b> · 🎁 <b>${save.chests.reduce((a, c) => a + [0, 1, 2].filter(k => c & (1 << k)).length, 0)}/${NLEVELS * 3}</b></p>
       <button class="btn" id="bBack">${t('back')}</button>
     </div>`, 'title-bg');
   $('bBack').onclick = homeScreen;
@@ -305,9 +373,10 @@ function helpScreen() {
       <h2>❔ ${t('help')}</h2>
       <div class="help">${t('helpControls').map(l => `<div>${esc(l)}</div>`).join('')}</div>
       <ul class="tips">${t('helpTips').map(l => `<li>${esc(l)}</li>`).join('')}</ul>
-      <button class="btn" id="bBack">${t('back')}</button>
+      <div class="row"><button class="btn" id="bTut">🎓 ${t('playTutorial')}</button><button class="btn ghost" id="bBack">${t('back')}</button></div>
     </div>`, 'title-bg');
   $('bBack').onclick = homeScreen;
+  $('bTut').onclick = () => { goFullscreen(); startLevel(0, { tut: true }); };
 }
 function settingsScreen(back) {
   let armed = false;
@@ -316,6 +385,8 @@ function settingsScreen(back) {
       <h2>⚙️ ${t('settings')}</h2>
       <div class="settings">
         <div class="set-row"><span>🔊 ${t('sound')}</span><button class="btn toggle ${muted ? 'off' : ''}" id="sSound">${muted ? t('off') : t('on')}</button></div>
+        <div class="set-row"><span>🎵 ${t('music')}</span><button class="btn toggle ${musicOn() ? '' : 'off'}" id="sMusic">${musicOn() ? t('on') : t('off')}</button></div>
+        ${IS_TOUCH ? `<div class="set-row"><span>📳 ${t('vibration')}</span><button class="btn toggle ${vibOn() ? '' : 'off'}" id="sVib">${vibOn() ? t('on') : t('off')}</button></div>` : ''}
         <div class="set-row"><span>🌐 ${t('language')}</span><div class="langs">${Object.keys(LANGS).map(k => `<button class="btn small ${lang === k ? 'on' : 'ghost'}" data-lang="${k}">${LANGS[k]}</button>`).join('')}</div></div>
         <div class="set-block">
           <b>📱 ${t('dlTitle')}</b>
@@ -332,6 +403,8 @@ function settingsScreen(back) {
       <button class="btn ghost" id="bBack">${t('back')}</button>
     </div>`, state === 'pause' || state === 'pauseShop' ? '' : 'title-bg');
   $('sSound').onclick = () => { setMuted(!muted); initAudio(); sfx('buy'); settingsScreen(back); };
+  $('sMusic').onclick = () => { initAudio(); setMusicOn(!musicOn()); settingsScreen(back); };
+  if ($('sVib')) $('sVib').onclick = () => { setSetting('vib', !vibOn()); buzz(60); settingsScreen(back); };
   scr.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { setLang(b.dataset.lang); settingsScreen(back); });
   $('sCopy').onclick = async () => {
     try { if (navigator.share) await navigator.share({ title: t('title'), url: SITE_URL }); else { await navigator.clipboard.writeText(SITE_URL); toast(t('copied')); } }
@@ -346,7 +419,7 @@ function settingsScreen(back) {
 
 /* ---------------- in-game: pause & results ---------------- */
 function pauseScreen() {
-  state = 'pause';
+  state = 'pause'; duckMusic(true);
   document.body.classList.add('paused'); releaseTouch();
   const inBoss = L.arena.active && !L.arena.done;   // no shopping in the middle of a boss fight
   show(`
@@ -372,13 +445,14 @@ function pauseScreen() {
   if (!inBoss && world2()) { $('bSmithP').onclick = () => smithScreen(backToPause); $('bSpecP').onclick = () => specialsScreen(backToPause); }
 }
 function resume() {
-  hideScreen(); state = 'play'; setGameUI(true);
+  hideScreen(); state = 'play'; setGameUI(true); duckMusic(false);
   // apply anything bought in the pause shop
   P.weap = ownedWeapons().includes(save.equip) ? save.equip : 'sword';
   P.hp = Math.min(P.hp, maxHP()); hudCache = {}; updateTouchExtras();
 }
 function finishLevel() {
   const n = L.n;
+  stopMusic();
   const tier = L.deaths === 0 ? 3 : L.deaths <= 2 ? 2 : 1;
   const prev = save.medals[n];
   save.medals[n] = Math.max(prev, tier);
@@ -390,11 +464,27 @@ function finishLevel() {
   state = 'medal'; setGameUI(false); sfx('medal');
   const last = n === NLEVELS - 1, w2open = !wasW2 && world2();
   const chests = [0, 1, 2].filter(k => save.chests[n] & (1 << k)).length;
+  // score summary
+  const rows = [
+    ['scoreKills', '👾', L.kills * 10], ['scoreCoins', '🪙', L.coinsGot * 2], ['scoreChests', '🎁', L.chestsGot * 150], ['scoreBoss', '👹', 500],
+    ['scoreTime', '⏱', Math.max(0, Math.round((L.par - L.time) / 60)) * 10], ['scoreNoFall', '💯', L.deaths === 0 ? 300 : 0],
+  ];
+  let total = rows.reduce((a, r) => a + r[2], 0);
+  if (L.hard) total = Math.round(total * 1.5);
+  const stars = [L.time <= L.par, chests >= L.chestTotal, (L.killsReal || 0) >= 0.8 * (L.enemyTotal || 1)];
+  save.stars[n] |= stars.reduce((m, s, i) => m | (s ? 1 << i : 0), 0);
+  const newBestScore = total > (save.scores[n] || 0); if (newBestScore) save.scores[n] = total;
+  const crownNew = L.hard && !save.crowns[n]; if (L.hard) save.crowns[n] = 1;
+  persist();
   show(`
     <div class="panel narrow medal-screen">
       <h2>${esc(t('defeated', loc(BOSSES[n].name)))}</h2>
-      <div class="medal-big">${medalSVG(tier, MEDALS[n].sym, 112)}</div>
-      <h3>${esc(loc(MEDALS[n].name))} — ${tierName(tier)}</h3>
+      <div class="medal-big">${L.hard ? crownSVG(112) : medalSVG(tier, MEDALS[n].sym, 112)}</div>
+      <h3>${L.hard ? (crownNew ? t('crownEarned') : '👑 ' + t('modeSuper')) : esc(loc(MEDALS[n].name)) + ' — ' + tierName(tier)}</h3>
+      <div class="stars">${[['starSpeed', '⏱'], ['starExplorer', '🎁'], ['starHunter', '👾']].map(([k, ic], i) => `<div class="star ${stars[i] ? 'on' : ''}" style="--d:${0.5 + i * 0.25}s"><span>★</span><small>${ic} ${t(k)}</small></div>`).join('')}</div>
+      <div class="score-box">${rows.map(([k, ic, v], i) => `<div class="score-row" style="--d:${0.2 + i * 0.12}s"><span>${ic} ${t(k)}</span><b data-count="${v}">0</b></div>`).join('')}${L.hard ? `<div class="score-row" style="--d:0.95s"><span>👑 ${t('scoreHard')}</span><b>×1.5</b></div>` : ''}
+        <div class="score-total"><span>${t('total')}</span><b data-count="${total}">0</b></div>
+        <small class="best">${newBestScore ? '🎉 ' + t('newBestScore') : t('bestScore', save.scores[n])}</small></div>
       <div class="result-grid">
         <div><span>⏱ ${t('time')}</span><b>${fmtTime(L.time)}${newBest && prev ? ' ★' : ''}</b></div>
         <div><span>💀 ${t('falls')}</span><b>${L.deaths}</b></div>
@@ -407,6 +497,10 @@ function finishLevel() {
       ${w2open ? `<p class="unlock">🎉 ${t('w2Unlocked')}</p>` : ''}
       <div class="col"><button class="btn big" id="bGo">${last || n === PER_WORLD - 1 ? t('theEnd') : t('toNext')}</button><button class="btn ghost" id="bHome">${t('toHome')}</button></div>
     </div>`, 'title-bg');
+  // count the numbers up
+  const els = [...scr.querySelectorAll('[data-count]')], t0 = performance.now();
+  const tickNum = now => { const k = Math.min(1, (now - t0) / 1300); els.forEach(el => el.textContent = Math.round(+el.dataset.count * (1 - Math.pow(1 - k, 3)))); if (k < 1 && document.body.contains(els[0])) requestAnimationFrame(tickNum); };
+  if (els.length) requestAnimationFrame(tickNum);
   $('bGo').onclick = () => (last || n === PER_WORLD - 1) ? endingScreen(last ? 2 : 1) : upgradesScreen(homeScreen, n + 1);
   $('bHome').onclick = homeScreen;
 }
@@ -453,5 +547,5 @@ fit(); setupTouch();
 homeScreen();
 requestAnimationFrame(loop);
 addEventListener('beforeunload', persist);
-document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseScreen(); if (!document.hidden) checkUpdate(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseScreen(); if (AC) { if (document.hidden) AC.suspend(); else AC.resume(); } if (!document.hidden) checkUpdate(); });
 checkUpdate();

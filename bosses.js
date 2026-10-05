@@ -153,12 +153,13 @@ function startBoss() {
   L.safe = { x: A.left + 24, y: A.floor - P.h };
   const def = BOSSES[L.n];
   const sz = BOSS_SIZE[def.tpl];
-  const hp = Math.round(bossHP(L.n) * (def.hpMul || 1) * (L.n >= PER_WORLD ? 1.15 : 1));
+  const hp = Math.round(bossHP(L.n) * (def.hpMul || 1) * (L.n >= PER_WORLD ? 1.15 : 1) * (L.hard ? 1.4 : 1));
   const b = mkBoss(def, L.bossSpawn.x, def.fly ? A.floor - 120 - sz[1] : L.bossSpawn.y - sz[1], hp);
   if (def.shards) b.shards = [0, 1, 2, 3].map(i => ({ alive: true, a: i * Math.PI / 2, regrow: 0 }));
   L.bosses = [b]; L.bossMax = hp;
   A.flood = null; A.shrink = null; A.gust = null; A.fx = []; A.rockT = 200; A.shoveTold = false;
-  sfx('boss'); cam.shake = 10;
+  sfx('boss'); cam.shake = 10; buzz([60, 40, 60]);
+  playMusic(L.n >= PER_WORLD ? 'boss2' : 'boss1');
   showBossBar(loc(def.name));
   toast('⚔ ' + loc(def.name) + ' ⚔', 2500);
 }
@@ -169,6 +170,7 @@ function resetBossFight() {
   L.bosses = []; L.enemies = L.enemies.filter(e => !e.minion);
   L.projectiles = []; L.warnings = []; L.ink = 0; P.gflip = 0;
   hideBossBar();
+  playMusic('lvl' + L.n);
 }
 function bossAlive() { return L.bosses.some(b => !b.clone && b.state !== 'dying'); }
 const bossBox = b => ({ x: b.x + 2, y: b.y + 2, w: b.w - 4, h: b.h - 2 });
@@ -204,7 +206,7 @@ function damageBoss(b, dmg) {
     dmg *= 2;
   }
   const d = Math.round(b.stun > 0 ? dmg * 2 : dmg);
-  b.hp -= d; b.flash = 6;
+  b.hp -= d; b.flash = 6; buzz(15);
   floatText(b.x + b.w / 2, b.y - 4, (b.stun > 0 || b.guard ? '×2 ' : '') + d, b.stun > 0 ? '#ffd54a' : '#fff');
   sfx('hit'); burst(b.x + b.w / 2, b.y + b.h / 2, 6, ['#fff', b.def.c1], 2.5);
   // mashing the attack button gets punished with a shove
@@ -452,7 +454,7 @@ function updateBoss(b) {
   b.anim++; if (b.flash > 0) b.flash--; if (b.stun > 0) b.stun--;
   const pcx = P.x + P.w / 2, bcx = b.x + b.w / 2, dx = pcx - bcx;
   // pace grows with the world number and each phase; later phases chain moves together
-  const sp = (1 + Math.min(L.n, 12) * 0.045) * (b.phase >= 2 ? 1.25 : 1) * (b.phase >= 3 ? 1.15 : 1);
+  const sp = (1 + Math.min(L.n, 12) * 0.045) * (b.phase >= 2 ? 1.25 : 1) * (b.phase >= 3 ? 1.15 : 1) * (L.hard ? 1.15 : 1);
   const c = { dx, sp, fly: !!def.fly && !b.flyMode, hoverY: A.floor - 120 - b.h, wait: v => (b.phase >= 2 && Math.random() < (b.phase >= 3 ? 0.5 : 0.3)) ? 6 : v * 0.7 / sp };
   if (b.phase >= 3 && b.anim % 5 === 0 && !b.hidden) L.particles.push({ x: b.x + Math.random() * b.w, y: b.y + b.h, vx: 0, vy: -1 - Math.random(), life: 30, max: 30, col: '#ff3a2a', s: 2, g: -0.02 });
   if (b.shards) for (const s of b.shards) { s.a += 0.03; if (!s.alive && b.state !== 'shards' && --s.regrow <= 0) { s.alive = true; burst(bcx + Math.cos(s.a) * 30, b.y + b.h / 2 + Math.sin(s.a) * 22, 6, ['#8ae0ff'], 1.5); } }
@@ -468,7 +470,7 @@ function updateBoss(b) {
       if (!L.bosses.some(o => o !== b && !o.dead && !o.clone && o.state !== 'dying') && !L.bosses.some(o => o !== b && !o.dead && !o.clone)) {
         dropCoins(bcx, b.y + b.h / 2, 20 + L.n * 4);
         A.done = true; for (let y = 0; y < ROWS - 2; y++) if (tileAt(A.gateX, y) === 7) setTile(A.gateX, y, 0);
-        hideBossBar(); save.bosses++; L.finishT = 170; clearBossHazards(); A.shrink = null;
+        hideBossBar(); save.bosses++; L.finishT = 170; clearBossHazards(); A.shrink = null; L.bossDown = true; stopMusic(); buzz([100, 60, 100, 60, 200]);
       }
     }
     return;
@@ -482,7 +484,7 @@ function updateBoss(b) {
   if (!free) {
     b.vy = Math.min(b.vy + (b.state === 'slam' ? 0.42 : 0.45), 9);
     const hx = moveX(b, b.vx);
-    if (hx && b.state === 'charge' && b.sub === 'run') { b.state = 'stunned'; b.t = 80; b.stun = 80; b.vx = 0; cam.shake = 12; sfx('slam'); toast(t('stunned'), 1600); burst(bcx + b.face * b.w / 2, b.y + b.h / 2, 12, ['#fff', '#ffd54a'], 3); }
+    if (hx && b.state === 'charge' && b.sub === 'run') { buzz(80); b.state = 'stunned'; b.t = 80; b.stun = 80; b.vx = 0; cam.shake = 12; sfx('slam'); toast(t('stunned'), 1600); burst(bcx + b.face * b.w / 2, b.y + b.h / 2, 12, ['#fff', '#ffd54a'], 3); }
     const wasAir = !b.onGround;
     const hy = moveY(b, b.vy, true);
     if (hy === 1) { b.vy = 0; b.onGround = true; if (wasAir) { const M = MOVES[b.state]; if (M && M.land) M.land(b, c); } }

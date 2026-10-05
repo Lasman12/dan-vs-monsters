@@ -25,7 +25,7 @@ const IS_APP = /DanApp/.test(navigator.userAgent);   // running inside the Andro
 /* ---------------- sound ---------------- */
 let AC = null, muted = !!(store.get(SETTINGS_KEY) || {}).muted;
 function setMuted(v) { muted = v; store.set(SETTINGS_KEY, Object.assign(store.get(SETTINGS_KEY) || {}, { muted: v })); }
-function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } if (AC && AC.state === 'suspended') AC.resume(); }
+function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } if (AC && AC.state === 'suspended') AC.resume(); if (AC && typeof startMusicNow === 'function') startMusicNow(); }
 const SFX = {
   jump: [['square', 300, 600, 0.08, 0.08]], djump: [['square', 400, 800, 0.08, 0.08]], swing: [['noise', 0, 0, 0.06, 0.06]],
   hit: [['square', 220, 80, 0.08, 0.12]], kill: [['square', 400, 60, 0.18, 0.12], ['noise', 0, 0, 0.12, 0.08]], hurt: [['sawtooth', 200, 60, 0.2, 0.12]],
@@ -113,14 +113,34 @@ const DAN_LEGS = {
   jump: ['...llllll...', '...l....l...', '..kk....kk..', '............'],
 };
 const danSets = {};
-function danSet(ai) {
-  if (danSets[ai]) return danSets[ai];
-  const a = ARMORS[ai];
-  const pal = { h: a.helm || '#5a3a1e', s: '#f2c49a', E: '#1a1020', b: a.body, B: a.bodyD, l: '#3a4a8a', k: '#4a2e1a' };
+// hats are extra pixel rows on top of the head; capes hang behind the body
+const HATS = {
+  band: { row2: '..HHHHHHHH..' },
+  bandana: { row0: '....HHHH....', row1: '...HHHHHHH..', row2: '..HHHHHHHHH.' },
+  horns: { top: ['.H........H.', '.HH......HH.'], row0: '...HHHHHH...', row1: '..HHHHHHHH..' },
+  wizard: { top: ['......H.....', '.....HHH....', '....HHHHH...', '.HHHHHHHHHH.'] },
+  mask: { row4: '..hsHHHHEH..' },
+  crown: { top: ['...Y.H.Y....', '...HHHHH....'] },
+};
+function danSet(ai, skinId = save.skin) {
+  const key = ai + ':' + skinId;
+  if (danSets[key]) return danSets[key];
+  const a = ARMORS[ai], sk = SKINS.find(s => s.id === skinId) || SKINS[0];
+  const pal = { h: a.helm || sk.hair || '#5a3a1e', s: sk.skin || '#f2c49a', E: sk.eye || '#1a1020', K: '#1a1020', b: a.body, B: a.bodyD, l: sk.pants || '#3a4a8a', k: sk.boots || '#4a2e1a', c: sk.cape, H: sk.hatCol, Y: '#ffcc33' };
+  let top = DAN_TOP.slice();
+  const hat = sk.hat && HATS[sk.hat];
+  if (hat) {
+    for (const k of ['row0', 'row1', 'row2', 'row4']) if (hat[k]) top[+k.slice(3)] = hat[k];
+    if (hat.top) top = [...hat.top, ...top];
+  }
+  if (sk.patch) { top[top.length - 3] = top[top.length - 3].replace('E', 'K'); top[top.length - 4] = top[top.length - 4].slice(0, 8) + 'K' + top[top.length - 4].slice(9); }
   const set = {};
-  for (const legs of ['idle', 'run1', 'run2', 'jump']) for (const body of ['idle', 'atk'])
-    set[body + '_' + legs] = sprite([...DAN_TOP, ...DAN_BODY[body], ...DAN_LEGS[legs]], pal);
-  return danSets[ai] = set;
+  for (const legs of ['idle', 'run1', 'run2', 'jump']) for (const body of ['idle', 'atk']) {
+    let rows = [...top, ...DAN_BODY[body], ...DAN_LEGS[legs]];
+    if (sk.cape) { const h0 = top.length; rows = rows.map((r, i) => (i >= h0 && i < h0 + 8) ? r.slice(0, 1) + (r[1] === '.' ? 'c' : r[1]) + (r[2] === '.' ? 'c' : r[2]) + r.slice(3) : r); }
+    set[body + '_' + legs] = sprite(rows, pal);
+  }
+  return danSets[key] = set;
 }
 
 const ESPR = {};
@@ -302,14 +322,14 @@ const isSolidT = t => t === 8 ? !L.toggle : t === 9 ? L.toggle : TILE_SOLID[t] =
 const cam = { x: 0, y: 0, shake: 0 };
 const enemyPool = n => POOLS[n];
 
-function buildLevel(n) {
+function buildLevel(n, opt = {}) {
   const r = mulberry(9001 + n * 7919);
   const th = THEMES[n], gim = th.gim || [];
   const has = g => gim.includes(g);
   const maxD = n === 0 ? 1 : n === 1 ? 2 : 3;
   const pool = CHUNKS.filter(c => c.d <= maxD && (!c.need || has(c.need)));
-  const count = n < PER_WORLD ? 9 + Math.floor(n * 1.5) : 14 + (n - PER_WORLD);
-  const seq = [START_CHUNK];
+  const count = opt.tut ? 0 : n < PER_WORLD ? 9 + Math.floor(n * 1.5) : 14 + (n - PER_WORLD);
+  const seq = opt.tut ? [START_CHUNK, ...TUT_CHUNKS] : [START_CHUNK];
   const ambushAt = new Set(), used = {}, recent = [];
   const genP = n === 0 ? 0.3 : 0.42;
   for (let k = 1; k <= (th.ambush || 0); k++) ambushAt.add(Math.floor(count * k / ((th.ambush || 0) + 1)));
@@ -330,7 +350,7 @@ function buildLevel(n) {
     if (ambushAt.has(i)) seq.push(AMBUSH_CHUNK);
     if (i % 4 === 3 && i < count - 1) seq.push(CHECKPOINT_CHUNK);
   }
-  seq.push(CHECKPOINT_CHUNK);
+  if (!opt.tut) seq.push(CHECKPOINT_CHUNK);
   const ARENA_W = 34;
   const width = seq.reduce((s, c) => s + c.rows[0].length, 0) + ARENA_W;
   const tiles = new Uint8Array(width * ROWS);
@@ -339,13 +359,14 @@ function buildLevel(n) {
     cannons: [], stalacs: [], geysers: [], torches: [], fires: [], ambushes: [], bolts: [], fx: [],
     seq: [], crumbles: new Map(), projectiles: [], particles: [], texts: [], warnings: [], tipZones: [],
     bosses: [], arena: null, time: 0, deaths: 0, coinsGot: 0, kills: 0, chestsGot: 0,
-    toggle: false, rhythm: has('rhythm'), rhyT: 0, dark: has('dark'), wind: has('wind') ? { t: 200, state: 'calm', dir: -1 } : null, chase: null, slowT: 0, ink: 0,
+    hard: !!opt.hard, tut: !!opt.tut, signs: [], goal: null, potionsUsed: 0, killsReal: 0,
+    toggle: false, rhythm: !opt.tut && has('rhythm'), rhyT: 0, dark: has('dark'), wind: has('wind') ? { t: 200, state: 'calm', dir: -1 } : null, chase: null, slowT: 0, ink: 0,
   };
   L = lv;   // tile helpers below read L
   const set = (x, y, v) => { if (x >= 0 && x < width && y >= 0 && y < ROWS) tiles[y * width + x] = v; };
   const get = (x, y) => (x >= 0 && x < width && y >= 0 && y < ROWS) ? tiles[y * width + x] : 0;
   const pool2 = enemyPool(n);
-  const eliteP = n < 2 ? 0 : Math.min(0.25, 0.04 + n * 0.012);
+  const eliteP = (n < 2 ? 0 : Math.min(0.25, 0.04 + n * 0.012)) * (opt.hard ? 2 : 1) + (opt.hard && n < 2 ? 0.08 : 0);
   const chestSpots = [];
   let col = 0;
   seq.forEach((ch, ci) => {
@@ -381,11 +402,13 @@ function buildLevel(n) {
         case 'G': lv.pickups.push(mkPickup('gem', px + 4, py + 4)); break;
         case 'P': lv.pickups.push(mkPickup('potion', px + 4, py + 8)); break;
         case 'F': lv.flags.push({ x: px + 2, y: py + 1, w: 10, h: 15, on: false }); break;
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7': lv.signs.push({ x: px + 2, y: py + 4, w: 12, h: 12, key: 'tut' + c }); break;
+        case '!': lv.goal = { x: px, y: py - 16, w: 16, h: 32 }; lv.flags.push({ x: px + 2, y: py + 1, w: 10, h: 15, on: true, goal: true }); break;
         case 'S': case 'O': case 'B': case 'K': case 'N': case 'E':
         case 'R': case 'H': case 'W': case 'Q': case 'Z': case 'U': {
           // 'E' is random from the world's pool; ground grunts are swapped for local monsters half the time
           let type = c;
-          if (c === 'E' || ((c === 'S' || c === 'O') && r() < 0.5)) type = pool2[(r() * pool2.length) | 0];
+          if (c === 'E' || ((c === 'S' || c === 'O') && !opt.tut && r() < 0.5)) type = pool2[(r() * pool2.length) | 0];
           const e = mkEnemy(type, px, py, n);
           if (r() < eliteP) makeElite(e);
           lv.enemies.push(e); break;
@@ -393,7 +416,7 @@ function buildLevel(n) {
       }
     }
     // per-chunk mechanics
-    if (ch !== START_CHUNK && ch !== CHECKPOINT_CHUNK && ch !== AMBUSH_CHUNK) {
+    if (!opt.tut && ch !== START_CHUNK && ch !== CHECKPOINT_CHUNK && ch !== AMBUSH_CHUNK) {
       if (has('ice') && !['gen-hops', 'gen-switch2'].includes(ch.id) && r() < 0.7) for (let i = 0; i < cw; i++) for (let y = 1; y < ROWS; y++) if (get(col + i, y) === 1 && get(col + i, y - 1) === 0) set(col + i, y, 10);
       if (has('geyser')) for (let i = 2; i < cw - 2; i++) for (let y = 4; y < ROWS; y++) {
         const gx = col + i;
@@ -425,7 +448,7 @@ function buildLevel(n) {
   // darkness: torches along the floor give some light
   if (lv.dark) for (let gx = 12; gx < col - 4; gx += 13 + ((r() * 6) | 0)) for (let y = 2; y < ROWS; y++) if (isSolidT(get(gx, y)) && get(gx, y - 1) === 0 && get(gx, y - 2) === 0) { lv.torches.push({ x: gx * T + 5, y: y * T - 16, w: 6, h: 16 }); break; }
   // chase: a hazard wall runs after Dan between two checkpoints
-  if (th.chase) {
+  if (th.chase && !opt.tut) {
     const fl = lv.flags.slice().sort((a, b) => a.x - b.x);
     const a = fl.length >= 3 ? fl[1] : fl[0], b = fl.length >= 3 ? fl[2] : fl[1];
     if (a && b) lv.chase = { from: a.x, to: b.x, x: 0, active: false, done: false, kind: th.chase, speed: Math.min(1.85, 1.45 + n * 0.02) };
@@ -437,6 +460,8 @@ function buildLevel(n) {
   lv.arena = { a0, gateX: a0 + 3, left: (a0 + 4) * T, right: (a0 + ARENA_W - 1) * T, trigger: (a0 + 6) * T, top: 2 * T, floor: (ROWS - 2) * T, active: false, done: false };
   lv.bossSpawn = { x: (a0 + 26) * T, y: (ROWS - 2) * T };
   buildArena(lv, a0, set, get);
+  if (opt.tut) lv.arena.trigger = Infinity;
+  lv.enemyTotal = lv.enemies.length; lv.par = (seq.length * 8 + 50) * 60;
   lv.spawn = { x: 3 * T, y: (ROWS - 3) * T };
   lv.checkpoint = { ...lv.spawn };
   lv.safe = { ...lv.spawn };
@@ -506,7 +531,7 @@ function mkPickup(type, x, y, vx = 0, vy = 0, phys = false) {
   const sz = type === 'coin' ? 5 : type === 'gem' ? 7 : 6;
   return { type, x, y, w: sz, h: sz, vx, vy, phys, t: Math.random() * 100, life: phys ? 900 : -1, delay: phys ? 20 : 0 };
 }
-function mkChest(x, y, idx) { return { x, y, w: 14, h: 10, idx, open: false, old: !!(save.chests[L.n] & (1 << idx)) }; }
+function mkChest(x, y, idx) { return { x, y, w: 14, h: 10, idx, open: false, old: !L.tut && !!(save.chests[L.n] & (1 << idx)) }; }
 const EDEF = {
   S: { kind: 'slime', w: 12, h: 8, hp: 20, dmg: 12, coins: 2 },
   O: { kind: 'goblin', w: 10, h: 12, hp: 26, dmg: 15, coins: 3 },
@@ -529,7 +554,7 @@ const EDEF = {
 };
 function mkEnemy(type, px, py, n) {
   const d = EDEF[type];
-  const hp = Math.round(d.hp * (1 + 0.28 * n));
+  const hp = Math.round(d.hp * (1 + 0.28 * n) * (L && L.hard ? 1.6 : 1));
   return {
     type, kind: d.kind, w: d.w, h: d.h, x: px + (T - d.w) / 2, y: py + T - d.h, hx: px, hy: py,
     vx: 0, vy: 0, hp, max: hp, dmg: Math.round(d.dmg * 1.3 * (1 + 0.13 * n)), coins: d.coins + Math.floor(n / 5), fly: !!d.fly, spiky: !!d.spiky, heavy: !!d.heavy, alpha: 1, puff: 0,
@@ -557,15 +582,15 @@ function hurtPlayer(amount, srcX, opt = {}) {
   if (P.dead) return false;
   if (!opt.dot && (P.inv > 0 || P.dashT > 0)) return false;
   if (P.shieldT > 0) { burst(P.x + P.w / 2, P.y + P.h / 2, 6, ['#7fe3ff', '#fff'], 2); return false; }
-  const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[save.armor].red)));
+  const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[save.armor].red) * (L.hard ? 1.5 : 1)));
   P.hp -= dmg;
-  if (!opt.dot) { P.inv = 70; P.vx = (P.x + P.w / 2 < srcX ? -1 : 1) * 3; P.vy = -3.5 * (P.gflip ? -1 : 1); P.atkT = 0; sfx('hurt'); cam.shake = 6; }
+  if (!opt.dot) { P.inv = 70; P.vx = (P.x + P.w / 2 < srcX ? -1 : 1) * 3; P.vy = -3.5 * (P.gflip ? -1 : 1); P.atkT = 0; sfx('hurt'); cam.shake = 6; buzz(45); }
   floatText(P.x + P.w / 2, P.y - 4, '-' + dmg, '#ff5050');
   if (P.hp <= 0) killPlayer();
   return true;
 }
 function killPlayer() {
-  P.hp = 0; P.dead = 100; L.deaths++;
+  P.hp = 0; P.dead = 100; L.deaths++; buzz([90, 50, 140]);
   sfx('die'); burst(P.x + P.w / 2, P.y + P.h / 2, 24, ['#e04848', '#f2c49a', '#fff'], 3);
   showDeath(true);
 }
@@ -723,10 +748,11 @@ function updatePlayer() {
   for (const f of L.flags) if (!f.on && overlap(P, { x: f.x - 4, y: f.y - 20, w: f.w + 8, h: f.h + 20 })) {
     L.flags.forEach(o => o.on = false); f.on = true;
     L.checkpoint = { x: f.x, y: f.y + f.h - P.h };
-    P.hp = Math.max(P.hp, maxHP()); sfx('check'); toast(t('checkpoint'));
+    P.hp = L.hard ? Math.min(maxHP(), Math.max(P.hp, P.hp + maxHP() * 0.5)) : Math.max(P.hp, maxHP()); sfx('check'); toast(t(L.hard ? 'checkpointHard' : 'checkpoint'));
     burst(f.x + 4, f.y, 14, ['#3fd04a', '#fff'], 2);
   }
-  for (const z of L.tipZones) if (!z.shown && P.x > z.x - 40) { z.shown = true; showTip(z.tag); }
+  for (const z of L.tipZones) if (!z.shown && P.x > z.x - 40) { z.shown = true; if (!L.tut) showTip(z.tag); }
+  if (L.goal && overlap(P, L.goal)) { L.goal = null; finishTutorial(); }
   if (!L.arena.active && !L.arena.done && P.x > L.arena.trigger) startBoss();
 }
 function showTip(tag) { if (!save.tips[tag]) { save.tips[tag] = 1; toast(t('tip_' + tag), 4500); persist(); } }
@@ -744,7 +770,7 @@ function onHitLanded(x, y, isBoss) {
 }
 function lightningFx(x, y) {
   L.bolts.push({ x, y0: Math.max(cam.y - 10, y - 220), y1: y, life: 14 });
-  sfx('thunder'); cam.shake = Math.max(cam.shake, 5);
+  sfx('thunder'); cam.shake = Math.max(cam.shake, 5); buzz(35);
   burst(x, y, 12, ['#fff', '#ffff60', '#7fe3ff'], 3);
 }
 function hitWithBox(hb, dmg, kind) {
@@ -781,7 +807,7 @@ function hitWithBox(hb, dmg, kind) {
 function hammerSlam(fall) {
   const k = 0.5 + fall / 96, W = curWeapon();
   const dmg = Math.round(W.dmg * k), R = 40 + Math.min(40, fall / 4);
-  sfx('smash'); cam.shake = Math.min(16, 5 + fall / 16);
+  sfx('smash'); cam.shake = Math.min(16, 5 + fall / 16); buzz(60);
   for (let i = -1; i <= 1; i += 2) for (let j = 0; j < 8; j++) L.particles.push({ x: P.x + P.w / 2, y: P.y + P.h, vx: i * (1 + j * 0.5), vy: -1 - Math.random() * 2, life: 25, max: 25, col: '#e8d8b0', s: 2, g: 0.15 });
   floatText(P.x + P.w / 2, P.y - 10, 'SMASH', '#ffcc33');
   const zone = { x: P.x + P.w / 2 - R, y: P.y - 6, w: R * 2, h: P.h + 10 };
@@ -823,6 +849,9 @@ function castSpecial() {
 function drinkPotion() {
   if (save.potions <= 0) { toast(t('noPotions')); return; }
   if (P.hp >= maxHP()) { toast(t('fullHp')); return; }
+  if (L.hard && L.potionsUsed >= HARD_POTIONS) { toast(t('potionLimit', HARD_POTIONS)); return; }
+  L.potionsUsed = (L.potionsUsed || 0) + 1;
+  if (L.hard) setTimeout(() => toast(t('potionsLeft', HARD_POTIONS - L.potionsUsed), 1200), 400);
   save.potions--; P.hp = Math.min(maxHP(), P.hp + 50); sfx('potion');
   floatText(P.x + P.w / 2, P.y - 6, '+50', '#5cff7a'); burst(P.x + P.w / 2, P.y + P.h / 2, 12, ['#ff6a8a', '#fff'], 1.5);
   persist();
@@ -842,10 +871,10 @@ function flipToggle() {
 }
 function hitSwitch(s) { s.cd = 45; flipToggle(); burst(s.x + 5, s.y + 5, 10, [L.toggle ? '#4a8aff' : '#ff4a5a', '#fff'], 2); cam.shake = 3; }
 function openChest(c) {
-  c.open = true; sfx('chest');
+  c.open = true; sfx('chest'); buzz(30);
   const n = c.old ? 3 : Math.round(8 + L.n * 1.5);
   dropCoins(c.x + c.w / 2, c.y, n);
-  if (!c.old) { dropCoins(c.x + c.w / 2, c.y, 0); L.pickups.push(mkPickup('gem', c.x + 4, c.y - 6, 0, -3, true)); save.chests[L.n] |= (1 << c.idx); L.chestsGot++; persist(); }
+  if (!c.old) { L.pickups.push(mkPickup('gem', c.x + 4, c.y - 6, 0, -3, true)); if (!L.tut) save.chests[L.n] |= (1 << c.idx); L.chestsGot++; persist(); }
   toast(c.old ? t('chestOld') : t('chest', n + 15), 1800);
   burst(c.x + c.w / 2, c.y, 18, ['#ffcc33', '#fff', '#ff4a8a'], 2.5);
 }
@@ -865,7 +894,7 @@ function damageEnemy(e, dmg, dir) {
   if (e.kind === 'hedge' && e.state === 'roll') { e.state = 'idle'; e.t = 40; }
   if (e.kind === 'brute' && e.state === 'wind') { e.state = 'idle'; e.t2 = 60; }
   floatText(e.x + e.w / 2, e.y - 2, String(dmg), '#fff');
-  sfx('hit'); burst(e.x + e.w / 2, e.y + e.h / 2, 5, ['#fff', '#ffe08a'], 2);
+  sfx('hit'); buzz(12); burst(e.x + e.w / 2, e.y + e.h / 2, 5, ['#fff', '#ffe08a'], 2);
   if (e.kind === 'knight') e.turnT = Math.min(e.turnT, 6);
   if (e.hp <= 0) killEnemy(e);
   return true;
@@ -874,8 +903,8 @@ const KILL_COLS = { slime: ['#5ccf4a', '#8ef07a'], goblin: ['#6ab04a', '#8a5a2a'
   hedge: ['#7a5a3a', '#e8c8a0'], ghost: ['#e8f0ff', '#2a2050'], frog: ['#4ab04a', '#e8f080'], wasp: ['#ffcc33', '#1a1020'], rocky: ['#8a7a6a', '#ff8a3a'], bomber: ['#8ab04a', '#6a3a8a'],
   spear: ['#d8a040', '#3a6a9a'], shaman: ['#2a6a4a', '#80ff80'], brute: ['#7a8a5a', '#6a4a3a'], imp: ['#d03030', '#ffe040'], flame: ['#ff6a1a', '#ffd040'], cbat: ['#5ad0ff', '#fff'] };
 function killEnemy(e) {
-  e.dead = true; L.kills++; save.kills++;
-  sfx('kill'); cam.shake = 3;
+  e.dead = true; L.kills++; save.kills++; if (!e.minion) L.killsReal = (L.killsReal || 0) + 1;
+  sfx('kill'); cam.shake = 3; buzz(25);
   burst(e.x + e.w / 2, e.y + e.h / 2, e.elite ? 26 : 16, e.elite ? ['#ffcc33', '#fff', ...KILL_COLS[e.kind]] : KILL_COLS[e.kind] || ['#fff'], 2.5);
   dropCoins(e.x + e.w / 2, e.y + e.h / 2, e.coins);
   if (Math.random() < (e.elite ? 0.3 : 0.05)) L.pickups.push(mkPickup('potion', e.x + e.w / 2 - 3, e.y, 0, -3, true));
@@ -1132,7 +1161,7 @@ function spawnWave(a) {
     if ((a.wave === a.waves && i === 0 && n >= 2) || Math.random() < 0.08 + n * 0.01) makeElite(e);
     // flyers hover just above head height so a jump (or a normal swing) reaches them
     if (e.fly) { e.state = e.kind === 'bat' ? 'chase' : 'idle'; e.hy = a.floorY - (e.kind === 'cbat' ? 46 : 36); e.y = e.hy; }
-    L.enemies.push(e); burst(e.x + 6, e.y + 6, 10, ['#fff', '#ff4a5a'], 2);
+    L.enemies.push(e); L.enemyTotal++; burst(e.x + 6, e.y + 6, 10, ['#fff', '#ff4a5a'], 2);
   }
 }
 function updateAmbush(a) {
@@ -1152,7 +1181,7 @@ function updateAmbush(a) {
 
 /* ---------------- projectiles / pickups / particles ---------------- */
 function explode(x, y, r, dmg, mine) {
-  sfx('explode'); cam.shake = Math.max(cam.shake, 6);
+  sfx('explode'); cam.shake = Math.max(cam.shake, 6); buzz(40);
   burst(x, y, 22, ['#ff8a2a', '#ffcc33', '#3a3a3a', '#fff'], 3);
   const zone = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
   if (!P.dead && overlap(P, zone) && !mine) hurtPlayer(dmg, x);
@@ -1231,7 +1260,7 @@ function updatePickups() {
 // coin bonus upgrade; fractions carry over so +2% really adds up
 let coinFrac = 0;
 function gainCoins(v) {
-  const extra = v * save.coinLv * COIN_STEP / 100 + coinFrac, whole = Math.floor(extra);
+  const extra = v * (save.coinLv * COIN_STEP / 100 + (L && L.hard ? 0.5 : 0)) + coinFrac, whole = Math.floor(extra);
   coinFrac = extra - whole;
   save.coins += v + whole; L.coinsGot += v + whole;
 }
@@ -1464,6 +1493,26 @@ function drawProjectiles() {
     }
   }
 }
+// tutorial signposts: a speech bubble with the hint when Dan is close
+function drawSigns() {
+  for (const s of L.signs) {
+    if (!onScreen(s, 200)) continue;
+    const x = Math.round(s.x - cam.x), y = Math.round(s.y - cam.y);
+    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x + 5, y + 4, 2, 9); ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, y - 3, 14, 9); ctx.fillStyle = '#c08a4a'; ctx.fillRect(x, y - 2, 12, 7); ctx.fillStyle = '#fff'; ctx.fillRect(x + 5, y - 1, 2, 3); ctx.fillRect(x + 5, y + 3, 2, 1);
+    if (Math.abs(P.x - s.x) > 110) continue;
+    const txt = t(s.key + (IS_TOUCH ? 't' : 'k')) !== s.key + (IS_TOUCH ? 't' : 'k') ? t(s.key + (IS_TOUCH ? 't' : 'k')) : t(s.key);
+    ctx.font = '7px Rubik, sans-serif'; ctx.direction = lang === 'he' ? 'rtl' : 'ltr'; ctx.textAlign = 'center';
+    const words = txt.split(' '), lines = []; let cur = '';
+    for (const w of words) { const tryL = cur ? cur + ' ' + w : w; if (ctx.measureText(tryL).width > 150 && cur) { lines.push(cur); cur = w; } else cur = tryL; }
+    if (cur) lines.push(cur);
+    const bw = Math.min(162, Math.max(...lines.map(l => ctx.measureText(l).width)) + 12), bh = lines.length * 9 + 7;
+    const bx = clamp(x + 6, bw / 2 + 2, VW - bw / 2 - 2), by = y - 12 - bh;
+    ctx.fillStyle = OUTLINE; ctx.fillRect(bx - bw / 2 - 1, by - 1, bw + 2, bh + 2); ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx - bw / 2, by, bw, bh);
+    ctx.fillStyle = '#fff8e8'; ctx.fillRect(x + 4, by + bh, 4, 3);
+    ctx.fillStyle = '#2a1a10'; lines.forEach((l, i) => ctx.fillText(l, bx, by + 9 + i * 9));
+    ctx.direction = 'ltr';
+  }
+}
 // a bouncing "HIT ME!" sign over every crystal (drawn above the darkness)
 function drawSwitchSigns() {
   for (const s of L.switches) if (onScreen(s)) {
@@ -1536,6 +1585,7 @@ function render() {
   const darkR = L.ink > 0 ? 60 : (L.dark || (L.arena.active && L.arena.dark)) ? 88 : 0;
   if (darkR) drawDarkness(darkR);
   drawSwitchSigns();
+  if (L.signs.length) drawSigns();
   if (L.slowT > 0) { ctx.fillStyle = 'rgba(120,80,255,0.12)'; ctx.fillRect(0, 0, VW, VH); }
   ctx.restore();
 }
@@ -1628,9 +1678,9 @@ function showDeath(on) { $('deathmsg').classList.toggle('on', on); if (on) { $('
 
 /* ---------------- level flow ---------------- */
 let state = 'home';
-function startLevel(n) {
+function startLevel(n, opt = {}) {
   goFullscreen();
-  L = buildLevel(n);
+  L = buildLevel(n, opt);
   L.chestsFoundBefore = 0;
   for (let i = 0; i < 3; i++) if (save.chests[n] & (1 << i)) L.chestsFoundBefore++;
   L.chestsFoundBefore = Math.min(L.chestsFoundBefore, L.chestTotal);
@@ -1640,10 +1690,12 @@ function startLevel(n) {
   P.hp = maxHP(); P.mana = 0; P.shieldT = 0; resetPlayer(L.spawn); P.inv = 0; P.face = 1;
   updateCamera(true);
   hideScreen(); hideBossBar(); showDeath(false);
-  hud.lvl.textContent = t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name));
+  hud.lvl.textContent = opt.tut ? t('tutorial') : t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)) + (L.hard ? ' 👑' : '');
+  playMusic(opt.tut ? 'lvl0' : 'lvl' + n);
   hudCache = {};
   state = 'play'; setGameUI(true); updateTouchExtras();
-  toast(t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)), 2200);
+  toast(opt.tut ? t('tutorial') : (L.hard ? '👑 ' + t('modeSuper') + ' — ' : '') + t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)), 2200);
+  if (opt.tut) return;
   if (!save.tips.start) { save.tips.start = 1; setTimeout(() => toast(t(IS_TOUCH ? 'tip_startTouch' : 'tip_start'), 5000), 2300); persist(); }
   const firstGim = (L.gim || []).find(g => ['ice', 'bounce', 'cannon', 'conveyor'].includes(g));
   if (firstGim) setTimeout(() => state === 'play' && showTip(firstGim), 2600);

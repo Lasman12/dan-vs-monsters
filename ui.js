@@ -87,6 +87,7 @@ function homeScreen() {
           <button class="iconbtn" id="hSettings" aria-label="${t('settings')}">⚙️</button>
         </div>
       </div>
+      ${needAccount() ? `<button class="acc-banner" id="hAcc">☁️ ${t('accRemind')} <b>${t('signup')}</b></button>` : ''}
       ${IS_APP && newBuild ? `<a class="update-banner" href="${APK_URL}" target="_blank" rel="noopener">🆕 ${esc(t('updateAvail', newBuild))} <b>${t('updateBtn')}</b></a>` : ''}
       <div class="home-mid">
         <div class="home-left">
@@ -110,8 +111,10 @@ function homeScreen() {
           <button class="play-btn" id="hPlay"><span>${t('play')}</span><small>${esc(t('continueLv', Math.floor(ni / PER_WORLD) + 1, (ni % PER_WORLD) + 1))}<br>${esc(loc(th.name))}</small></button>
         </div>
       </div>
+      <div class="ver">v${BUILD}</div>
     </div>`, 'home-bg');
   heroCv = $('homeHero');
+  if ($('hAcc')) $('hAcc').onclick = () => settingsScreen(homeScreen, true);
   $('hPlay').onclick = () => { initAudio(); goFullscreen(); if (!save.tutDone) startLevel(0, { tut: true }); else startLevel(ni); };
   $('hSkins').onclick = () => skinsScreen();
   if ($('hLb')) $('hLb').onclick = () => leaderboardScreen('level');
@@ -333,12 +336,13 @@ async function leaderboardScreen(kind) {
         <button class="tab ${kind === 'ach' ? 'on' : ''}" id="lbA">🎖️ ${t('lbAch')}</button>
       </div>
       <div class="lb" id="lbList"><p class="hint">${t('lbLoading')}</p></div>
-      ${cloud ? '' : `<p class="hint small">👤 ${t('lbJoin')}</p>`}
+      ${cloud ? '' : `<div class="nudge-box lb-join"><span>👤 ${t('lbJoin')}</span><button class="btn" id="lbAcc">⚙️ ${t('signup')}</button></div>`}
       <div class="row"><button class="btn ghost" id="bBack">${t('back')}</button></div>
     </div>`, 'title-bg');
   $('lbL').onclick = () => leaderboardScreen('level');
   $('lbC').onclick = () => leaderboardScreen('crowns');
   $('lbA').onclick = () => leaderboardScreen('ach');
+  if ($('lbAcc')) $('lbAcc').onclick = () => settingsScreen(() => leaderboardScreen(kind), true);
   $('bBack').onclick = homeScreen;
   let rows;
   try { rows = await fetchLeaderboard(kind); }
@@ -487,9 +491,12 @@ function finishTutorial() {
       <div class="coins-big">🪙 <b>${save.coins}</b></div>
       <div class="col"><button class="btn big" id="bGo">${t('letsGo')}</button><button class="btn ghost" id="bHome">${t('toHome')}</button></div>
     </div>`, 'title-bg');
-  $('bGo').onclick = () => startLevel(first ? 0 : nextLevelIdx());
-  $('bHome').onclick = homeScreen;
+  const nudge = first && needAccount();
+  $('bGo').onclick = () => { const go = () => startLevel(first ? 0 : nextLevelIdx()); nudge ? settingsScreen(go, true) : go(); };
+  $('bHome').onclick = () => nudge ? settingsScreen(homeScreen, true) : homeScreen();
 }
+// no online account yet (and accounts are available)
+function needAccount() { return cloudReady() && !cloud; }
 
 /* ---------------- medals / help / settings ---------------- */
 function medalsScreen() {
@@ -515,11 +522,13 @@ function helpScreen() {
   $('bBack').onclick = homeScreen;
   $('bTut').onclick = () => { goFullscreen(); startLevel(0, { tut: true }); };
 }
-function settingsScreen(back) {
+function settingsScreen(back, nudge = false) {
   let armed = false;
+  nudge = nudge && needAccount();
   show(`
     <div class="panel narrow">
       <h2>⚙️ ${t('settings')}</h2>
+      ${nudge ? `<div class="nudge-box"><b>☁️ ${t('nudgeTitle')}</b><small>${t('nudgeText')}</small></div>` : ''}
       <div class="settings">
         <div class="set-row"><span>🔊 ${t('sound')}</span><button class="btn toggle ${muted ? 'off' : ''}" id="sSound">${muted ? t('off') : t('on')}</button></div>
         <div class="set-row"><span>🎵 ${t('music')}</span><button class="btn toggle ${musicOn() ? '' : 'off'}" id="sMusic">${musicOn() ? t('on') : t('off')}</button></div>
@@ -535,7 +544,7 @@ function settingsScreen(back) {
           <div class="linkrow"><input id="sLink" readonly value="${SITE_URL}" dir="ltr"><button class="btn" id="sCopy">${navigator.share ? t('share') : t('copy')}</button></div>
           <small>${t('linkHint')}</small>
         </div>
-        ${cloudReady() ? `<div class="set-block account">
+        ${cloudReady() ? `<div class="set-block account ${nudge ? 'glow' : ''}" id="accBlock">
           <b>☁️ ${t('account')}</b>
           ${cloud ? `<div class="acc-row"><span>👤 ${t('loggedAs', esc(cloud.name))}</span></div>
             <small>${t('accSynced')}${cloud.lastSync ? ' · ' + new Date(cloud.lastSync).toLocaleTimeString() : ''}</small>
@@ -548,7 +557,8 @@ function settingsScreen(back) {
         </div>` : ''}
         <div class="set-block"><small>💾 ${t('saveNote')}</small><button class="btn ghost danger" id="sReset">${t('reset')}</button></div>
       </div>
-      <button class="btn ghost" id="bBack">${t('back')}</button>
+      <button class="btn ghost" id="bBack">${nudge ? t('notNow') : t('back')}</button>
+      <p class="ver-set">${t('version')} ${BUILD}</p>
     </div>`, state === 'pause' || state === 'pauseShop' ? '' : 'title-bg');
   $('sSound').onclick = () => { setMuted(!muted); initAudio(); sfx('buy'); settingsScreen(back); };
   $('sMusic').onclick = () => { initAudio(); setMusicOn(!musicOn()); settingsScreen(back); };
@@ -565,7 +575,8 @@ function settingsScreen(back) {
   $('bBack').onclick = back;
   // online account
   const busy = on => scr.querySelectorAll('.account .btn').forEach(b => b.disabled = on);
-  const after = r => { toast(r === 'loaded' ? t('cloudLoaded') : t('cloudSaved')); buildDanCacheReset(); settingsScreen(back); };
+  const after = r => { toast(r === 'loaded' ? t('cloudLoaded') : t('cloudSaved')); buildDanCacheReset(); nudge ? back() : settingsScreen(back); };
+  if (nudge && $('accBlock')) setTimeout(() => $('accBlock') && $('accBlock').scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
   if ($('aIn')) {
     const go = async signup => {
       const n = $('aName').value.trim(), p = $('aPass').value, err = $('aErr');

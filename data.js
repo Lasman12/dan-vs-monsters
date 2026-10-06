@@ -5,7 +5,7 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.5.0';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.5.1';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */
@@ -79,7 +79,7 @@ const BOSSES = [
   { name: n3('Mushroom Queen', 'Reina Hongo', 'מלכת הפטריות'), tpl: 'mush', c1: '#d04060', c2: '#802040', eye: '#fff0a0', crown: true, moves: ['spores', 'hop'], p2: ['summon'], p3: ['rain', 'spores'], arena: 'jungle' },
   { name: n3('Clockwork Titan', 'Titán Mecánico', 'טיטאן השעון'), tpl: 'robot', c1: '#c0a060', c2: '#6a5030', eye: '#ff4020', moves: ['laser', 'rockets'], p2: ['charge'], p3: ['laser', 'slam'], arena: 'factory' },
   { name: n3('Kraken', 'Kraken', 'הקראקן'), tpl: 'squid', c1: '#8a4ab0', c2: '#4a2070', eye: '#ffe040', moves: ['tentacles', 'shoot'], p2: ['ink', 'flood'], arena: 'ruins' },
-  { name: n3('Cloud Serpent', 'Serpiente de Nubes', 'נחש העננים'), tpl: 'serpent', c1: '#e0f0ff', c2: '#7090c0', eye: '#ff40a0', fly: true, moves: ['serpent', 'lightning'], p2: ['shoot'], p3: ['gust'], arena: 'peaks', hpMul: 0.75 },
+  { name: n3('Cloud Serpent', 'Serpiente de Nubes', 'נחש העננים'), tpl: 'serpent', c1: '#e0f0ff', c2: '#7090c0', eye: '#ff40a0', fly: true, moves: ['serpent', 'lightning'], p2: ['shoot'], p3: ['gust'], arena: 'peaks', hpMul: 0.375 },
   { name: n3('Frost Queen', 'Reina de Escarcha', 'מלכת הכפור'), tpl: 'skull', c1: '#a0e0ff', c2: '#4080c0', eye: '#ffffff', crown: true, moves: ['clones', 'breath'], p2: ['pillars', 'teleport'], arena: 'citadel', breath: 'frost' },
   { name: n3('Toxic Blob', 'Masa Tóxica', 'הגוש הרעיל'), tpl: 'blob', c1: '#90ff40', c2: '#408020', eye: '#ff40ff', moves: ['hop', 'spores'], p2: ['split'], p3: ['slam'], arena: 'toxic' },
   { name: n3('Ghost Captain', 'Capitán Fantasma', 'קפטן הרפאים'), tpl: 'ogre', c1: '#8090c0', c2: '#3a4070', eye: '#60ffff', moves: ['invis', 'cannons'], p2: ['combo', 'ink'], arena: 'ship', ghost: true },

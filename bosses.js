@@ -156,7 +156,7 @@ function startBoss() {
   const hp = Math.round(bossHP(L.n) * (def.hpMul || 1) * (L.n >= PER_WORLD ? 1.15 : 1) * (L.hard ? 1.4 : 1));
   const b = mkBoss(def, L.bossSpawn.x, def.fly ? A.floor - 120 - sz[1] : L.bossSpawn.y - sz[1], hp);
   if (def.shards) b.shards = [0, 1, 2, 3].map(i => ({ alive: true, a: i * Math.PI / 2, regrow: 0 }));
-  L.bosses = [b]; L.bossMax = hp;
+  L.bosses = [b]; L.bossMax = hp; L.bossHits = 0;
   A.flood = null; A.shrink = null; A.gust = null; A.fx = []; A.rockT = 200; A.shoveTold = false;
   sfx('boss'); cam.shake = 10; buzz([60, 40, 60]);
   playMusic(L.n >= PER_WORLD ? 'boss2' : 'boss1');
@@ -468,9 +468,10 @@ function updateBoss(b) {
       b.dead = true;
       burst(bcx, b.y + b.h / 2, 50, ['#fff', def.c1, def.c2, '#ffd54a'], 4); sfx('kill'); cam.shake = 16;
       if (!L.bosses.some(o => o !== b && !o.dead && !o.clone && o.state !== 'dying') && !L.bosses.some(o => o !== b && !o.dead && !o.clone)) {
-        dropCoins(bcx, b.y + b.h / 2, 20 + L.n * 4);
+        if (!L.rush) dropCoins(bcx, b.y + b.h / 2, 20 + L.n * 4);
+        if (!L.bossHits) save.flawless = 1;
         A.done = true; for (let y = 0; y < ROWS - 2; y++) if (tileAt(A.gateX, y) === 7) setTile(A.gateX, y, 0);
-        hideBossBar(); save.bosses++; L.finishT = 170; clearBossHazards(); A.shrink = null; L.bossDown = true; stopMusic(); buzz([100, 60, 100, 60, 200]);
+        hideBossBar(); save.bosses++; L.finishT = L.rush ? 110 : 170; clearBossHazards(); A.shrink = null; L.bossDown = true; stopMusic(); buzz([100, 60, 100, 60, 200]);
       }
     }
     return;

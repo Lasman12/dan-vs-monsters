@@ -5,7 +5,7 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.5.3';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.6.0';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */
@@ -136,7 +136,38 @@ const SKINS = [
   { id: 'royal', name: n3('Monster Royalty', 'Realeza Monstruo', 'מלכות המפלצות'), req: { crowns: 3 }, hat: 'crown', hatCol: '#a050ff', cape: '#6a2aa0' },
   { id: 'emperor', name: n3('Void Emperor', 'Emperador del Vacío', 'קיסר הריק'), req: { crowns: 12 }, hat: 'bigcrown', hatCol: '#ffcc33', gem: '#ff40ff', hair: '#2a1040', eye: '#ff40ff', skin: '#e8d8f0', pants: '#2a1040', boots: '#140820', cape: '#8a2ad0' },
 ];
-const HARD_POTIONS = 4;   // Super Hard: potions you may drink per level
+const HARD_POTIONS = 4;
+
+/* achievements: test(s) reads the save; prog(s) = [current, goal] for the progress bar */
+const chestCount = s => s.chests.reduce((a, c) => a + [0, 1, 2].filter(k => c & (1 << k)).length, 0);
+const ACHIEVEMENTS = [
+  { id: 'first', icon: '👊', r: 20, name: n3('First Punch', 'Primer Golpe', 'מכה ראשונה'), desc: n3('Beat your first monster', 'Vence a tu primer monstruo', 'חסל את המפלצת הראשונה'), prog: s => [s.kills, 1] },
+  { id: 'hunter', icon: '🗡️', r: 50, name: n3('Monster Hunter', 'Cazamonstruos', 'צייד מפלצות'), desc: n3('Beat 100 monsters', 'Vence 100 monstruos', 'חסל 100 מפלצות'), prog: s => [s.kills, 100] },
+  { id: 'slayer', icon: '💀', r: 250, name: n3('Monster Slayer', 'Exterminador', 'משמיד מפלצות'), desc: n3('Beat 1,000 monsters', 'Vence 1.000 monstruos', 'חסל 1,000 מפלצות'), prog: s => [s.kills, 1000] },
+  { id: 'boss1', icon: '👹', r: 50, name: n3('Boss Breaker', 'Rompejefes', 'שובר בוסים'), desc: n3('Beat your first boss', 'Vence a tu primer jefe', 'נצח את הבוס הראשון'), prog: s => [s.bosses, 1] },
+  { id: 'world1', icon: '🏰', r: 200, name: n3('King Slayer', 'Matarreyes', 'מפיל המלך'), desc: n3('Finish World 1', 'Termina el Mundo 1', 'סיים את עולם 1'), prog: s => [s.medals[9] ? 1 : 0, 1] },
+  { id: 'world2', icon: '🌌', r: 500, name: n3('Void Walker', 'Caminante del Vacío', 'הולך הריק'), desc: n3('Finish World 2', 'Termina el Mundo 2', 'סיים את עולם 2'), prog: s => [s.medals[19] ? 1 : 0, 1] },
+  { id: 'gold5', icon: '🥇', r: 100, name: n3('Golden Touch', 'Toque Dorado', 'מגע הזהב'), desc: n3('Earn 5 gold medals', 'Gana 5 medallas de oro', 'השג 5 מדליות זהב'), prog: s => [s.medals.filter(m => m === 3).length, 5] },
+  { id: 'gold20', icon: '🏆', r: 1000, name: n3('Perfectionist', 'Perfeccionista', 'פרפקציוניסט'), desc: n3('Earn all 20 gold medals', 'Gana las 20 medallas de oro', 'השג את כל 20 מדליות הזהב'), prog: s => [s.medals.filter(m => m === 3).length, 20] },
+  { id: 'crown1', icon: '👑', r: 150, name: n3('Royal Pain', 'Realmente Duro', 'כאב מלכותי'), desc: n3('Earn a purple crown', 'Gana una corona morada', 'השג כתר סגול'), prog: s => [s.crowns.filter(c => c).length, 1] },
+  { id: 'crown10', icon: '💜', r: 600, name: n3('Crown Collector', 'Coleccionista de Coronas', 'אספן כתרים'), desc: n3('Earn 10 purple crowns', 'Gana 10 coronas moradas', 'השג 10 כתרים סגולים'), prog: s => [s.crowns.filter(c => c).length, 10] },
+  { id: 'chests10', icon: '🎁', r: 80, name: n3('Treasure Hunter', 'Buscatesoros', 'צייד אוצרות'), desc: n3('Find 10 treasure chests', 'Encuentra 10 cofres', 'מצא 10 תיבות אוצר'), prog: s => [chestCount(s), 10] },
+  { id: 'chests60', icon: '🗝️', r: 800, name: n3('Nothing Left Behind', 'Nada se Escapa', 'שום דבר לא נשאר'), desc: n3('Find all 60 treasure chests', 'Encuentra los 60 cofres', 'מצא את כל 60 התיבות'), prog: s => [chestCount(s), 60] },
+  { id: 'stars3', icon: '⭐', r: 100, name: n3('Three Stars', 'Tres Estrellas', 'שלושה כוכבים'), desc: n3('Get all 3 stars in a level', 'Consigue las 3 estrellas en un nivel', 'השג 3 כוכבים בשלב'), prog: s => [s.stars.some(x => x === 7) ? 1 : 0, 1] },
+  { id: 'speedy', icon: '⏱️', r: 150, name: n3('Speedrunner', 'Speedrunner', 'ספידראנר'), desc: n3('Get the speed star in 5 levels', 'Consigue la estrella de velocidad en 5 niveles', 'השג כוכב מהירות ב-5 שלבים'), prog: s => [s.stars.filter(x => x & 1).length, 5] },
+  { id: 'rich', icon: '💰', r: 200, name: n3('Rich Dan', 'Dan Rico', 'דן העשיר'), desc: n3('Hold 5,000 coins at once', 'Ten 5.000 monedas a la vez', 'החזק 5,000 מטבעות בבת אחת'), prog: s => [s.coins, 5000] },
+  { id: 'fashion', icon: '👕', r: 150, name: n3('Fashion Fighter', 'Luchador a la Moda', 'לוחם אופנתי'), desc: n3('Own 5 skins', 'Ten 5 aspectos', 'השג 5 סקינים'), prog: s => [s.skins.length, 5] },
+  { id: 'diamond', icon: '💎', r: 150, name: n3('Diamond Dan', 'Dan Diamante', 'דן היהלום'), desc: n3('Get the Diamond Armor', 'Consigue la Armadura de Diamante', 'השג את שריון היהלום'), prog: s => [Math.min(s.armor, 5), 5] },
+  { id: 'legend', icon: '⚔️', r: 150, name: n3('Legendary', 'Legendario', 'אגדי'), desc: n3('Get the Legendary Sword', 'Consigue la Espada Legendaria', 'השג את החרב האגדית'), prog: s => [s.weapon, 5] },
+  { id: 'smith', icon: '⚒️', r: 100, name: n3('New Toys', 'Juguetes Nuevos', 'צעצועים חדשים'), desc: n3('Buy a bow or a hammer', 'Compra un arco o un martillo', 'קנה קשת או פטיש'), prog: s => [s.bowLv || s.hammerLv ? 1 : 0, 1] },
+  { id: 'magic', icon: '✨', r: 100, name: n3('Wizard in Training', 'Aprendiz de Mago', 'קוסם מתלמד'), desc: n3('Learn a special power', 'Aprende un poder especial', 'למד כוח מיוחד'), prog: s => [Object.values(s.spec).some(v => v) ? 1 : 0, 1] },
+  { id: 'flawless', icon: '🛡️', r: 300, name: n3('Untouchable', 'Intocable', 'בלתי ניתן לפגיעה'), desc: n3('Beat a boss without getting hit', 'Vence a un jefe sin recibir golpes', 'נצח בוס בלי לחטוף מכה'), prog: s => [s.flawless || 0, 1] },
+  { id: 'elites', icon: '🌟', r: 150, name: n3('Elite Hunter', 'Cazador de Élites', 'צייד עילית'), desc: n3('Beat 25 golden elite monsters', 'Vence 25 élites dorados', 'חסל 25 מפלצות עילית מוזהבות'), prog: s => [s.elites || 0, 25] },
+  { id: 'ambush', icon: '🚪', r: 120, name: n3('Trap Breaker', 'Rompetrampas', 'שובר מלכודות'), desc: n3('Clear 10 ambushes', 'Supera 10 emboscadas', 'נצח 10 מארבים'), prog: s => [s.ambushes || 0, 10] },
+  { id: 'pogo', icon: '⬇️', r: 100, name: n3('Pogo Master', 'Maestro del Rebote', 'מלך הקפיצות'), desc: n3('Bounce off 30 things with down-strikes', 'Rebota 30 veces con golpes hacia abajo', 'קפוץ 30 פעמים ממכות למטה'), prog: s => [s.pogos || 0, 30] },
+  { id: 'rush1', icon: '🔥', r: 400, name: n3('Boss Rusher', 'Rush de Jefes', 'ראש בוסים'), desc: n3('Finish the World 1 Boss Rush', 'Termina el Boss Rush del Mundo 1', 'סיים את ראש הבוסים של עולם 1'), prog: s => [s.rushBest[0] ? 1 : 0, 1] },
+  { id: 'rush2', icon: '☄️', r: 800, name: n3('Boss Rush Legend', 'Leyenda del Rush', 'אגדת ראש הבוסים'), desc: n3('Finish the World 2 Boss Rush', 'Termina el Boss Rush del Mundo 2', 'סיים את ראש הבוסים של עולם 2'), prog: s => [s.rushBest[1] ? 1 : 0, 1] },
+];   // Super Hard: potions you may drink per level
 
 const HP_STEP = 20;
 const HP_PRICES = [40, 70, 110, 160, 220, 290, 370, 460, 560, 680,      // world 1
@@ -185,6 +216,7 @@ function newSave() {
     bowLv: 0, hammerLv: 0, equip: 'sword', thunder: 0, sharp: 0,
     spec: { fireball: 0, storm: 0, shield: 0, slow: 0, heal: 0 }, special: null,
     skin: 'classic', skins: ['classic'], crowns: Array(NLEVELS).fill(0), scores: Array(NLEVELS).fill(0), stars: Array(NLEVELS).fill(0), mode: 'normal', tutDone: false,
+    ach: {}, rushBest: [0, 0], elites: 0, ambushes: 0, pogos: 0, flawless: 0,
   };
 }
 function fixSave(s) {
@@ -192,6 +224,8 @@ function fixSave(s) {
   for (const k of ['medals', 'best', 'chests', 'crowns', 'scores', 'stars']) { const a = Array.isArray(out[k]) ? out[k] : []; out[k] = Array.from({ length: NLEVELS }, (_, i) => a[i] || 0); }
   out.spec = Object.assign(newSave().spec, out.spec || {});
   if (!Array.isArray(out.skins) || !out.skins.length) out.skins = ['classic'];
+  if (!out.ach || typeof out.ach !== 'object' || Array.isArray(out.ach)) out.ach = {};
+  if (!Array.isArray(out.rushBest)) out.rushBest = [0, 0];
   if (s && s.v === 2 && s.tutDone === undefined && (s.unlocked > 1 || (s.medals || []).some(m => m))) out.tutDone = true;   // players who already played skip the tutorial
   out.v = 2;
   return out;
@@ -214,5 +248,15 @@ function loadSave() {
   return fixSave(s);
 }
 let save = loadSave();
-function persist() { store.set(SAVE_KEY, save); }
+function persist() { checkAch(); store.set(SAVE_KEY, save); }
+// unlock finished achievements and pay their coin reward
+function checkAch() {
+  if (!save || !save.ach) return;
+  const got = ACHIEVEMENTS.filter(a => !save.ach[a.id] && (() => { const [c, g] = a.prog(save); return c >= g; })());
+  if (!got.length) return;
+  let coins = 0;
+  for (const a of got) { save.ach[a.id] = 1; coins += a.r; }
+  save.coins += coins;
+  if (typeof achToast === 'function') achToast(got, coins);
+}
 const world2 = () => save.unlocked > PER_WORLD;   // beat level 10

@@ -329,7 +329,7 @@ function buildLevel(n, opt = {}) {
   const has = g => gim.includes(g);
   const maxD = n === 0 ? 1 : n === 1 ? 2 : 3;
   const pool = CHUNKS.filter(c => c.d <= maxD && (!c.need || has(c.need)));
-  const count = opt.tut ? 0 : n < PER_WORLD ? 9 + Math.floor(n * 1.5) : 14 + (n - PER_WORLD);
+  const count = opt.tut || opt.rush ? 0 : n < PER_WORLD ? 9 + Math.floor(n * 1.5) : 14 + (n - PER_WORLD);
   const seq = opt.tut ? [START_CHUNK, ...TUT_CHUNKS] : [START_CHUNK];
   const ambushAt = new Set(), used = {}, recent = [];
   const genP = n === 0 ? 0.3 : 0.42;
@@ -360,7 +360,7 @@ function buildLevel(n, opt = {}) {
     cannons: [], stalacs: [], geysers: [], torches: [], fires: [], ambushes: [], bolts: [], fx: [],
     seq: [], crumbles: new Map(), projectiles: [], particles: [], texts: [], warnings: [], tipZones: [],
     bosses: [], arena: null, time: 0, deaths: 0, coinsGot: 0, kills: 0, chestsGot: 0,
-    hard: !!opt.hard, tut: !!opt.tut, signs: [], goal: null, potionsUsed: 0, killsReal: 0,
+    hard: !!opt.hard, tut: !!opt.tut, rush: !!opt.rush, signs: [], goal: null, potionsUsed: 0, killsReal: 0,
     toggle: false, rhythm: !opt.tut && has('rhythm'), rhyT: 0, dark: has('dark'), wind: has('wind') ? { t: 200, state: 'calm', dir: -1 } : null, chase: null, slowT: 0, ink: 0,
   };
   L = lv;   // tile helpers below read L
@@ -464,6 +464,7 @@ function buildLevel(n, opt = {}) {
   if (opt.tut) lv.arena.trigger = Infinity;
   lv.enemyTotal = lv.enemies.length; lv.par = (seq.length * 8 + 50) * 60;
   lv.spawn = { x: 3 * T, y: (ROWS - 3) * T };
+  if (opt.rush) lv.spawn = { x: (a0 + 5) * T, y: (ROWS - 3) * T };   // boss rush: straight into the arena
   lv.checkpoint = { ...lv.spawn };
   lv.safe = { ...lv.spawn };
   return lv;
@@ -584,7 +585,7 @@ function hurtPlayer(amount, srcX, opt = {}) {
   if (!opt.dot && (P.inv > 0 || P.dashT > 0)) return false;
   if (P.shieldT > 0) { burst(P.x + P.w / 2, P.y + P.h / 2, 6, ['#7fe3ff', '#fff'], 2); return false; }
   const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[save.armor].red) * (L.hard ? 1.5 : 1)));
-  P.hp -= dmg;
+  P.hp -= dmg; if (L.arena.active) L.bossHits = (L.bossHits || 0) + 1;
   if (!opt.dot) { P.inv = 70; P.vx = (P.x + P.w / 2 < srcX ? -1 : 1) * 3; P.vy = -3.5 * (P.gflip ? -1 : 1); P.atkT = 0; sfx('hurt'); cam.shake = 6; buzz(45); }
   floatText(P.x + P.w / 2, P.y - 4, '-' + dmg, '#ff5050');
   if (P.hp <= 0) killPlayer();
@@ -597,6 +598,7 @@ function killPlayer() {
 }
 function respawn() {
   showDeath(false);
+  if (L.rush) return rushOver(false);   // boss rush: one life
   P.hp = maxHP(); P.shieldT = 0;
   resetPlayer(L.checkpoint);
   L.slowT = 0; L.ink = 0;
@@ -762,7 +764,7 @@ function attackBox(W) {
   const r = W.range;
   return { x: P.face > 0 ? P.x + P.w - 2 : P.x - r + 2, y: P.y - 3, w: r, h: P.h + 6 };
 }
-function pogo() { P.vy = -6.0; P.cut = true; P.airJumps = 1; P.atkT = Math.min(P.atkT, 4); }
+function pogo() { if (!L.tut) save.pogos = (save.pogos || 0) + 1; P.vy = -6.0; P.cut = true; P.airJumps = 1; P.atkT = Math.min(P.atkT, 4); }
 // a successful hit on a monster: mana, thunder enchant
 function onHitLanded(x, y, isBoss) {
   P.mana = Math.min(100, P.mana + (isBoss ? 2.5 : 5));
@@ -904,7 +906,7 @@ const KILL_COLS = { slime: ['#5ccf4a', '#8ef07a'], goblin: ['#6ab04a', '#8a5a2a'
   hedge: ['#7a5a3a', '#e8c8a0'], ghost: ['#e8f0ff', '#2a2050'], frog: ['#4ab04a', '#e8f080'], wasp: ['#ffcc33', '#1a1020'], rocky: ['#8a7a6a', '#ff8a3a'], bomber: ['#8ab04a', '#6a3a8a'],
   spear: ['#d8a040', '#3a6a9a'], shaman: ['#2a6a4a', '#80ff80'], brute: ['#7a8a5a', '#6a4a3a'], imp: ['#d03030', '#ffe040'], flame: ['#ff6a1a', '#ffd040'], cbat: ['#5ad0ff', '#fff'] };
 function killEnemy(e) {
-  e.dead = true; L.kills++; save.kills++; if (!e.minion) L.killsReal = (L.killsReal || 0) + 1;
+  e.dead = true; L.kills++; save.kills++; if (e.elite) save.elites = (save.elites || 0) + 1; if (!e.minion) L.killsReal = (L.killsReal || 0) + 1;
   sfx('kill'); cam.shake = 3; buzz(25);
   burst(e.x + e.w / 2, e.y + e.h / 2, e.elite ? 26 : 16, e.elite ? ['#ffcc33', '#fff', ...KILL_COLS[e.kind]] : KILL_COLS[e.kind] || ['#fff'], 2.5);
   dropCoins(e.x + e.w / 2, e.y + e.h / 2, e.coins);
@@ -1173,7 +1175,7 @@ function updateAmbush(a) {
     if (!L.enemies.some(e => e.amb === a && !e.dead)) {
       if (a.wave < a.waves) a.t = 50;
       else {
-        a.state = 'done'; ambushGates(a, false); sfx('door'); toast(t('ambushClear'), 2000);
+        a.state = 'done'; save.ambushes = (save.ambushes || 0) + 1; ambushGates(a, false); sfx('door'); toast(t('ambushClear'), 2000);
         if (a.idx >= 0) { const cx = ((a.c0 + a.c1) / 2) * T; const ch = mkChest(cx, a.floorY - 10, a.idx); L.chests.push(ch); burst(cx + 7, a.floorY - 10, 20, ['#ffcc33', '#fff'], 3); }
       }
     }
@@ -1691,10 +1693,16 @@ function startLevel(n, opt = {}) {
   P.hp = maxHP(); P.mana = 0; P.shieldT = 0; resetPlayer(L.spawn); P.inv = 0; P.face = 1;
   updateCamera(true);
   hideScreen(); hideBossBar(); showDeath(false);
-  hud.lvl.textContent = opt.tut ? t('tutorial') : t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)) + (L.hard ? ' 👑' : '');
+  hud.lvl.textContent = opt.rush ? '🔥 ' + t('rushHud', opt.rush.idx + 1, PER_WORLD) : opt.tut ? t('tutorial') : t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)) + (L.hard ? ' 👑' : '');
   playMusic(opt.tut ? 'lvl0' : 'lvl' + n);
   hudCache = {};
   state = 'play'; setGameUI(true); updateTouchExtras();
+  if (opt.rush) {   // boss rush: health carries over, the fight starts right away
+    if (opt.rush.hp) P.hp = Math.min(maxHP(), opt.rush.hp);
+    P.mana = opt.rush.mana || 0; P.inv = 60;
+    startBoss();
+    return;
+  }
   toast(opt.tut ? t('tutorial') : (L.hard ? '👑 ' + t('modeSuper') + ' — ' : '') + t('levelToast', (n % PER_WORLD) + 1, loc(L.th.name)), 2200);
   if (opt.tut) return;
   if (!save.tips.start) { save.tips.start = 1; setTimeout(() => toast(t(IS_TOUCH ? 'tip_startTouch' : 'tip_start'), 5000), 2300); persist(); }

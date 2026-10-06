@@ -95,6 +95,8 @@ function homeScreen() {
           ${cat('hSpec', '✨', t('specials'), !w2)}
           ${cat('hSkins', '👕', t('skins'), false)}
           ${cat('hMedals', '🏅', t('medals'), false)}
+          ${cat('hAch', '🎖️', t('achievements'), false, `<small class="cat-badge">${Object.keys(save.ach).length}/${ACHIEVEMENTS.length}</small>`)}
+          ${cloudReady() ? cat('hLb', '🏆', t('leaderboard'), false) : ''}
           ${cat('hHelp', '❔', t('help'), false)}
         </div>
         <div class="home-center">
@@ -104,6 +106,7 @@ function homeScreen() {
         </div>
         <div class="home-right">
           ${cat('hMap', '🗺️', t('map'), false)}
+          ${cat('hRush', '🔥', t('bossRush'), false)}
           <button class="play-btn" id="hPlay"><span>${t('play')}</span><small>${esc(t('continueLv', Math.floor(ni / PER_WORLD) + 1, (ni % PER_WORLD) + 1))}<br>${esc(loc(th.name))}</small></button>
         </div>
       </div>
@@ -111,7 +114,10 @@ function homeScreen() {
   heroCv = $('homeHero');
   $('hPlay').onclick = () => { initAudio(); goFullscreen(); if (!save.tutDone) startLevel(0, { tut: true }); else startLevel(ni); };
   $('hSkins').onclick = () => skinsScreen();
+  if ($('hLb')) $('hLb').onclick = () => leaderboardScreen('level');
   $('hMap').onclick = () => mapScreen();
+  $('hRush').onclick = () => rushScreen();
+  $('hAch').onclick = () => achScreen();
   $('hUp').onclick = () => upgradesScreen(homeScreen);
   $('hSmith').onclick = () => w2 ? smithScreen(homeScreen) : toast(t('unlockW2'));
   $('hSpec').onclick = () => w2 ? specialsScreen(homeScreen) : toast(t('unlockW2'));
@@ -315,6 +321,137 @@ function specialsScreen(back) {
   $('bBack').onclick = back;
 }
 
+/* ---------------- leaderboards ---------------- */
+async function leaderboardScreen(kind) {
+  state = 'shop'; setGameUI(false);
+  show(`
+    <div class="panel">
+      <h2>🏆 ${t('leaderboard')}</h2>
+      <div class="tabs lb-tabs">
+        <button class="tab ${kind === 'level' ? 'on' : ''}" id="lbL">🗺️ ${t('lbLevel')}</button>
+        <button class="tab ${kind === 'crowns' ? 'on' : ''}" id="lbC">${crownSVG(16)} ${t('lbCrowns')}</button>
+        <button class="tab ${kind === 'ach' ? 'on' : ''}" id="lbA">🎖️ ${t('lbAch')}</button>
+      </div>
+      <div class="lb" id="lbList"><p class="hint">${t('lbLoading')}</p></div>
+      ${cloud ? '' : `<p class="hint small">👤 ${t('lbJoin')}</p>`}
+      <div class="row"><button class="btn ghost" id="bBack">${t('back')}</button></div>
+    </div>`, 'title-bg');
+  $('lbL').onclick = () => leaderboardScreen('level');
+  $('lbC').onclick = () => leaderboardScreen('crowns');
+  $('lbA').onclick = () => leaderboardScreen('ach');
+  $('bBack').onclick = homeScreen;
+  let rows;
+  try { rows = await fetchLeaderboard(kind); }
+  catch (e) { const el = $('lbList'); if (el) el.innerHTML = `<p class="err">${t('lbError')}</p>`; return; }
+  const el = $('lbList'); if (!el) return;   // the player already left this screen
+  if (!rows || !rows.length) { el.innerHTML = `<p class="hint">${t('lbEmpty')}</p>`; return; }
+  const me = cloud && cloud.name.toLowerCase();
+  const val = r => kind === 'ach' ? `🎖️ ${r.value}/${ACHIEVEMENTS.length}` : kind === 'crowns' ? `${crownSVG(16)} ${r.value}` : r.value ? t('lbLevelVal', Math.floor((r.value - 1) / PER_WORLD) + 1, ((r.value - 1) % PER_WORLD) + 1) : '—';
+  const icon = n => n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : '#' + n;
+  el.innerHTML = rows.slice(0, 50).map(r => `<div class="lb-row ${me && r.name && r.name.toLowerCase() === me ? 'me' : ''}"><span class="lb-rank">${icon(r.rank)}</span><span class="lb-name" dir="ltr">${esc(r.name)}</span><span class="lb-val">${val(r)}</span></div>`).join('')
+    + (me && !rows.some(r => r.name && r.name.toLowerCase() === me) ? `<p class="hint small">${t('lbNotTop')}</p>` : '');
+}
+
+/* ---------------- achievements ---------------- */
+let achQueue = [];
+function achToast(list, coins) {
+  sfx('medal'); buzz([40, 30, 40]);
+  toast(list.length === 1 ? `🎖️ ${t('achUnlocked')}: ${list[0].icon} ${loc(list[0].name)} (+${coins} 🪙)` : `🎖️ ${t('achMany', list.length)} (+${coins} 🪙)`, 3200);
+}
+function achScreen() {
+  state = 'shop'; setGameUI(false);
+  const done = ACHIEVEMENTS.filter(a => save.ach[a.id]).length;
+  const rows = ACHIEVEMENTS.map(a => {
+    const got = !!save.ach[a.id], [c, g] = a.prog(save), k = Math.min(1, c / g);
+    return `<div class="ach ${got ? 'got' : ''}"><span class="ach-ic">${got ? a.icon : '🔒'}</span>
+      <div class="ach-txt"><b>${esc(loc(a.name))}</b><small>${esc(loc(a.desc))}</small>
+        ${got ? '' : `<div class="ach-bar"><i style="width:${(k * 100).toFixed(0)}%"></i></div><small class="ach-n">${Math.min(c, g).toLocaleString()}/${g.toLocaleString()}</small>`}</div>
+      <span class="ach-r">${got ? '✅' : '🪙 ' + a.r}</span></div>`;
+  });
+  show(`
+    <div class="panel wide">
+      <h2>🎖️ ${t('achievements')} <span class="ach-count">${done}/${ACHIEVEMENTS.length}</span></h2>
+      <div class="ach-list">${rows.join('')}</div>
+      ${cloudReady() ? `<p class="hint small">🏆 ${t('achLbHint')}</p>` : ''}
+      <div class="row"><button class="btn ghost" id="bBack">${t('back')}</button></div>
+    </div>`, 'title-bg');
+  $('bBack').onclick = homeScreen;
+}
+
+/* ---------------- boss rush ---------------- */
+let RUSH = null;   // { world, idx, time, hp, mana, potions }
+const RUSH_REWARD = [[800, 200], [2000, 450]];   // [first clear, repeat]
+function rushOpen(w) { return !!save.medals[w * PER_WORLD + PER_WORLD - 1]; }
+function rushScreen() {
+  state = 'shop'; setGameUI(false); playMusic('menu');
+  const card = w => {
+    const open = rushOpen(w), best = save.rushBest[w];
+    return `<div class="rush-card ${open ? '' : 'locked'}" style="--c1:${THEMES[w * PER_WORLD + 9].sky[0]};--c2:${THEMES[w * PER_WORLD].top}">
+      <h3>${t('world', w + 1)}</h3>
+      <div class="rush-bosses">${Array.from({ length: PER_WORLD }, (_, i) => `<span>${open ? '👹' : '❔'}</span>`).join('')}</div>
+      <p>${open ? (best ? `⏱ ${t('rushBest')}: <b>${fmtTime(best)}</b>` : t('rushNever')) : '🔒 ' + t('rushLocked', w + 1)}</p>
+      <p class="small">🪙 ${best ? RUSH_REWARD[w][1] : RUSH_REWARD[w][0]}${best ? '' : ' · ' + t('rushFirst')}</p>
+      <button class="btn big" id="rush${w}" ${open ? '' : 'disabled'}>🔥 ${t('rushStart')}</button>
+    </div>`;
+  };
+  show(`
+    <div class="panel wide">
+      <h2>🔥 ${t('bossRush')}</h2>
+      <p class="hint">${t('rushDesc')}</p>
+      <div class="rush-cards">${card(0)}${card(1)}</div>
+      <div class="row"><button class="btn" id="bUp">⬆️ ${t('upgrades')} <span class="coin">🪙 ${save.coins}</span></button><button class="btn ghost" id="bBack">${t('toHome')}</button></div>
+    </div>`, 'title-bg');
+  for (const w of [0, 1]) if (rushOpen(w)) $('rush' + w).onclick = () => { initAudio(); goFullscreen(); startRush(w); };
+  $('bUp').onclick = () => upgradesScreen(rushScreen);
+  $('bBack').onclick = homeScreen;
+}
+function startRush(w) {
+  RUSH = { world: w, idx: 0, time: 0, hp: 0, mana: 0 };
+  startLevel(w * PER_WORLD, { rush: RUSH });
+}
+function rushNext() {
+  RUSH.time += L.time; RUSH.idx++;
+  if (RUSH.idx >= PER_WORLD) return rushOver(true);
+  // a short breather: some health back before the next boss
+  RUSH.hp = Math.min(maxHP(), P.hp + Math.round(maxHP() * 0.35)); RUSH.mana = P.mana;
+  persist();
+  startLevel(RUSH.world * PER_WORLD + RUSH.idx, { rush: RUSH });
+  toast(`🔥 ${t('rushHud', RUSH.idx + 1, PER_WORLD)} — ${loc(BOSSES[L.n].name)}`, 2500);
+}
+function rushOver(won) {
+  const R = RUSH; if (!R) return homeScreen();
+  if (!won) R.time += L.time;
+  stopMusic(); state = 'medal'; setGameUI(false); showDeath(false); hideBossBar();
+  const w = R.world, beaten = won ? PER_WORLD : R.idx;
+  let reward = 0, newBest = false;
+  if (won) {
+    reward = save.rushBest[w] ? RUSH_REWARD[w][1] : RUSH_REWARD[w][0];
+    newBest = !save.rushBest[w] || R.time < save.rushBest[w];
+    if (newBest) save.rushBest[w] = R.time;
+    save.coins += reward; sfx('medal');
+  } else {
+    reward = beaten * 15 * (w + 1); save.coins += reward;
+  }
+  persist();
+  show(`
+    <div class="panel narrow medal-screen">
+      <h2>${won ? '🔥 ' + t('rushWon') : t('rushLost')}</h2>
+      <div class="rush-big">${won ? '🏆' : '💀'}</div>
+      <h3>${t('rushBeaten', beaten, PER_WORLD)}</h3>
+      <div class="result-grid">
+        <div><span>⏱ ${t('time')}</span><b>${fmtTime(R.time)}${newBest ? ' ★' : ''}</b></div>
+        <div><span>🪙 ${t('coins')}</span><b>+${reward}</b></div>
+        ${save.rushBest[w] ? `<div><span>🏅 ${t('rushBest')}</span><b>${fmtTime(save.rushBest[w])}</b></div>` : ''}
+      </div>
+      ${newBest && won ? `<p class="unlock">🎉 ${t('rushNewBest')}</p>` : ''}
+      <div class="col"><button class="btn big" id="bAgain">🔥 ${t('rushAgain')}</button><button class="btn" id="bUp">⬆️ ${t('upgrades')}</button><button class="btn ghost" id="bHome">${t('toHome')}</button></div>
+    </div>`, 'title-bg');
+  RUSH = null;
+  $('bAgain').onclick = () => startRush(w);
+  $('bUp').onclick = () => upgradesScreen(rushScreen);
+  $('bHome').onclick = homeScreen;
+}
+
 /* ---------------- skins ---------------- */
 function skinsScreen() {
   state = 'shop'; setGameUI(false);
@@ -466,8 +603,8 @@ function pauseScreen() {
       <p class="hint small">${t('coinsSaved')}</p>
     </div>`);
   $('bRes').onclick = resume;
-  $('bRestart').onclick = () => startLevel(L.n);
-  $('bMap').onclick = () => { persist(); mapScreen(); };
+  $('bRestart').onclick = () => L.rush ? startRush(RUSH.world) : startLevel(L.n);
+  $('bMap').onclick = () => { persist(); if (L.rush) { RUSH = null; rushScreen(); } else mapScreen(); };
   $('bSet').onclick = () => settingsScreen(pauseScreen);
   const backToPause = () => { state = 'pause'; pauseScreen(); };
   if (!inBoss) $('bShopP').onclick = () => upgradesScreen(backToPause);
@@ -480,6 +617,7 @@ function resume() {
   P.hp = Math.min(P.hp, maxHP()); hudCache = {}; updateTouchExtras();
 }
 function finishLevel() {
+  if (L.rush) return rushNext();
   const n = L.n;
   stopMusic();
   const tier = L.deaths === 0 ? 3 : L.deaths <= 2 ? 2 : 1;

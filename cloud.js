@@ -80,6 +80,11 @@ function cloudErrorText(e) {
   if (!navigator.onLine || m.includes('failed to fetch') || m.includes('network')) return t('cloudOffline');
   return t('cloudError') + (e && e.message ? ' (' + e.message + ')' : '');
 }
+// public leaderboards: only names, furthest level and crowns are exposed (server function)
+async function fetchLeaderboard(kind) {
+  if (cloud) { try { await cloudPush(); } catch (e) { } }   // make sure our own row is current
+  return cloudApi('/rest/v1/rpc/leaderboard', { method: 'POST', body: { kind } });
+}
 // on start: bring in progress made on another device
 async function cloudBoot() {
   if (!cloudReady() || !cloud) return;

@@ -121,12 +121,13 @@ const HATS = {
   wizard: { top: ['......H.....', '.....HHH....', '....HHHHH...', '.HHHHHHHHHH.'] },
   mask: { row4: '..hsHHHHEH..' },
   crown: { top: ['...Y.H.Y....', '...HHHHH....'] },
+  bigcrown: { top: ['..H..H..H...', '..HG.H.GH...', '..HHHHHHH...', '..HGHHHGH...'] },
 };
 function danSet(ai, skinId = save.skin) {
   const key = ai + ':' + skinId;
   if (danSets[key]) return danSets[key];
   const a = ARMORS[ai], sk = SKINS.find(s => s.id === skinId) || SKINS[0];
-  const pal = { h: a.helm || sk.hair || '#5a3a1e', s: sk.skin || '#f2c49a', E: sk.eye || '#1a1020', K: '#1a1020', b: a.body, B: a.bodyD, l: sk.pants || '#3a4a8a', k: sk.boots || '#4a2e1a', c: sk.cape, H: sk.hatCol, Y: '#ffcc33' };
+  const pal = { h: a.helm || sk.hair || '#5a3a1e', s: sk.skin || '#f2c49a', E: sk.eye || '#1a1020', K: '#1a1020', b: a.body, B: a.bodyD, l: sk.pants || '#3a4a8a', k: sk.boots || '#4a2e1a', c: sk.cape, H: sk.hatCol, Y: '#ffcc33', G: sk.gem || '#ff3050' };
   let top = DAN_TOP.slice();
   const hat = sk.hat && HATS[sk.hat];
   if (hat) {

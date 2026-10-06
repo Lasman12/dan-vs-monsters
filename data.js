@@ -5,7 +5,7 @@
    ========================================================= */
 const T = 16, ROWS = 20, LH = ROWS * T;
 const NLEVELS = 20, PER_WORLD = 10;
-const BUILD = '2.5.1';   // bump together with version.json and the ?v= in index.html
+const BUILD = '2.5.2';   // bump together with version.json and the ?v= in index.html
 const n3 = (en, es, he) => ({ en, es, he });
 
 /* gim: level mechanics. chase: hazard wall chasing Dan between two checkpoints. */
@@ -134,6 +134,7 @@ const SKINS = [
   { id: 'hero', name: n3('Super Hero', 'Superhéroe', 'גיבור על'), p: 1500, cape: '#e03040', pants: '#3050c0', hat: 'mask', hatCol: '#3050c0' },
   { id: 'golden', name: n3('Golden Dan', 'Dan Dorado', 'דן הזהב'), req: { gold: 10 }, skin: '#ffd870', hair: '#ffcc33', pants: '#c08a10', boots: '#a07010' },
   { id: 'royal', name: n3('Monster Royalty', 'Realeza Monstruo', 'מלכות המפלצות'), req: { crowns: 3 }, hat: 'crown', hatCol: '#a050ff', cape: '#6a2aa0' },
+  { id: 'emperor', name: n3('Void Emperor', 'Emperador del Vacío', 'קיסר הריק'), req: { crowns: 12 }, hat: 'bigcrown', hatCol: '#ffcc33', gem: '#ff40ff', hair: '#2a1040', eye: '#ff40ff', skin: '#e8d8f0', pants: '#2a1040', boots: '#140820', cape: '#8a2ad0' },
 ];
 const HARD_POTIONS = 4;   // Super Hard: potions you may drink per level
 

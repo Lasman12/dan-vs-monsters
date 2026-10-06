@@ -373,7 +373,7 @@ function buildLevel(n, opt = {}) {
   seq.forEach((ch, ci) => {
     const rows = ch.rows, off = ROWS - rows.length, cw = rows[0].length;
     let mCount = 0;
-    lv.seq.push({ id: ch.id, col });
+    lv.seq.push({ id: ch.id, col, mirrored: !!ch.mirrored });
     if (ch.tag) lv.tipZones.push({ x: col * T, tag: ch.tag });
     if (ch === AMBUSH_CHUNK) lv.ambushes.push({ c0: col, c1: col + cw - 1, floorY: (ROWS - 2) * T, state: 'idle', wave: 0, waves: n < 5 ? 2 : 3, t: 0 });
     for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) {

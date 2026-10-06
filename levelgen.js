@@ -142,5 +142,7 @@ function generateChunk(r, d, gim) {
 }
 // flip a hand-made chunk left/right (not ones whose doors/levers/switches only work one way)
 const MIRROR_SWAP = { '<': '>', '>': '<' };
-function canMirror(ch) { return !ch.rows.some(row => /[DL|s]/.test(row)); }
+// chunks built around a one-way route: flipped, their roof would hang over the wall you climb (a dead end)
+const NO_MIRROR = new Set(['wall', 'shaft', 'lift', 'spring', 'crumbleclimb', 'mushgap']);
+function canMirror(ch) { return !NO_MIRROR.has(ch.id) && !ch.rows.some(row => /[DL|s]/.test(row)); }
 function mirrorChunk(ch) { return Object.assign({}, ch, { rows: ch.rows.map(row => [...row].reverse().map(c => MIRROR_SWAP[c] || c).join('')), mirrored: true }); }
